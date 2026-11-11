@@ -118,9 +118,8 @@ class Product {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+  Map<String, dynamic> toJson({bool includeId = true}) {
+    final map = <String, dynamic>{
       'store_id': storeId,
       'category_id': categoryId,
       'name': name,
@@ -136,6 +135,10 @@ class Product {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (includeId) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   Product copyWith({
@@ -155,6 +158,8 @@ class Product {
     String? storeName,
     String? storeCity,
     String? storeLogo,
+    double? rating,
+    int? totalSales,
   }) {
     return Product(
       id: id,
@@ -177,8 +182,8 @@ class Product {
       storeName: storeName ?? this.storeName,
       storeCity: storeCity ?? this.storeCity,
       storeLogo: storeLogo ?? this.storeLogo,
-      rating: rating,
-      totalSales: totalSales,
+      rating: rating ?? this.rating,
+      totalSales: totalSales ?? this.totalSales,
     );
   }
 }
