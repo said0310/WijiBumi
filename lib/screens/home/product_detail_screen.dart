@@ -19,6 +19,7 @@ import '../cart/cart_screen.dart';
 import '../cart/checkout_screen.dart';
 import '../chat/chat_room_screen.dart';
 import '../store/store_detail_screen.dart';
+import '../../services/wishlist_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -82,6 +83,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: AppBar(
         title: const Text('Detail Produk'),
         actions: [
+                    ValueListenableBuilder(
+            valueListenable: WishlistService.listenable,
+            builder: (context, box, child) {
+              final saved = WishlistService.isSaved(product.id);
+              return IconButton(
+                icon: Icon(
+                  saved ? Icons.favorite : Icons.favorite_border,
+                  color: saved ? Colors.red : null,
+                ),
+                tooltip: saved ? 'Hapus dari wishlist' : 'Simpan ke wishlist',
+                onPressed: () async {
+                  final msg = await WishlistService.toggle(product);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(msg)));
+                },
+              );
+            },
+          ),
           Stack(
             children: [
               IconButton(

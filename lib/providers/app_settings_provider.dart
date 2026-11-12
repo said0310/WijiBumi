@@ -7,10 +7,6 @@ class AppSettingsProvider with ChangeNotifier {
   static const _kOrderNotif = 'settings_order_notif';
   static const _kPromoNotif = 'settings_promo_notif';
   static const _kChatNotif = 'settings_chat_notif';
-  static const _kEmailUpdates = 'settings_email_updates';
-  static const _kLanguageCode = 'settings_language_code';
-  static const _kShowOnline = 'settings_show_online';
-  static const _kAllowAnalytics = 'settings_allow_analytics';
 
   AppSettings _settings = const AppSettings();
   bool _isSaving = false;
@@ -19,7 +15,6 @@ class AppSettingsProvider with ChangeNotifier {
   AppSettings get settings => _settings;
   bool get isSaving => _isSaving;
   String? get lastError => _lastError;
-  Locale get locale => Locale(_settings.languageCode);
 
   AppSettingsProvider() {
     loadSettings();
@@ -37,11 +32,6 @@ class AppSettingsProvider with ChangeNotifier {
       promoNotifications:
           prefs.getBool(_scopedKey(_kPromoNotif, uid)) ?? true,
       chatNotifications: prefs.getBool(_scopedKey(_kChatNotif, uid)) ?? true,
-      emailUpdates: prefs.getBool(_scopedKey(_kEmailUpdates, uid)) ?? true,
-      languageCode: prefs.getString(_scopedKey(_kLanguageCode, uid)) ?? 'id',
-      showOnlineStatus: prefs.getBool(_scopedKey(_kShowOnline, uid)) ?? true,
-      allowAnalytics:
-          prefs.getBool(_scopedKey(_kAllowAnalytics, uid)) ?? true,
     );
     notifyListeners();
 
@@ -85,10 +75,6 @@ class AppSettingsProvider with ChangeNotifier {
     await prefs.setBool(_scopedKey(_kOrderNotif, uid), _settings.orderNotifications);
     await prefs.setBool(_scopedKey(_kPromoNotif, uid), _settings.promoNotifications);
     await prefs.setBool(_scopedKey(_kChatNotif, uid), _settings.chatNotifications);
-    await prefs.setBool(_scopedKey(_kEmailUpdates, uid), _settings.emailUpdates);
-    await prefs.setString(_scopedKey(_kLanguageCode, uid), _settings.languageCode);
-    await prefs.setBool(_scopedKey(_kShowOnline, uid), _settings.showOnlineStatus);
-    await prefs.setBool(_scopedKey(_kAllowAnalytics, uid), _settings.allowAnalytics);
   }
 }
 

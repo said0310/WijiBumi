@@ -268,14 +268,12 @@ void main() {
     await provider.loadSettings();
 
     final ok = await provider.updateSettings(
-      const AppSettings(languageCode: 'en', promoNotifications: false),
+      const AppSettings(promoNotifications: false),
     );
     expect(ok, isTrue);
-    expect(provider.settings.languageCode, 'en');
-    expect(provider.locale, const Locale('en'));
+    expect(provider.settings.promoNotifications, isFalse);
 
     await provider.clearSession();
-    expect(provider.settings.languageCode, 'id');
     expect(provider.settings.promoNotifications, isTrue);
   });
 

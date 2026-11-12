@@ -21,9 +21,6 @@ class SettingsScreen extends StatelessWidget {
       ThemeMode.system => 'System Default',
     };
 
-    final languageLabel =
-        settings.languageCode == 'en' ? 'English (EN)' : 'Bahasa Indonesia (ID)';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengaturan Aplikasi'),
@@ -69,41 +66,6 @@ class SettingsScreen extends StatelessWidget {
                     );
                   },
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.language_outlined, color: AppColors.primary),
-                  title: const Text(
-                    'Pengaturan Bahasa',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  subtitle: Text(languageLabel, style: const TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LanguageSettingsScreen()),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
-                  title: const Text(
-                    'Pengaturan Privasi',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  subtitle: const Text(
-                    'Visibilitas status & preferensi data',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()),
-                    );
-                  },
-                ),
               ],
             ),
           ),
@@ -112,7 +74,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-
 Future<void> _saveSettingsWithFeedback(
   BuildContext context,
   AppSettingsProvider provider,
@@ -191,19 +152,6 @@ class NotificationSettingsScreen extends StatelessWidget {
                             s.copyWith(promoNotifications: v),
                           ),
                 ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Pembaruan via Email'),
-                  subtitle: const Text('Ringkasan transaksi dan verifikasi akun melalui email'),
-                  value: s.emailUpdates,
-                  onChanged: provider.isSaving
-                      ? null
-                      : (v) => _saveSettingsWithFeedback(
-                            context,
-                            provider,
-                            s.copyWith(emailUpdates: v),
-                          ),
-                ),
               ],
             ),
           ),
@@ -259,109 +207,6 @@ class ThemeSettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class LanguageSettingsScreen extends StatelessWidget {
-  const LanguageSettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppSettingsProvider>();
-    final s = provider.settings;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Bahasa')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          GlassContainer(
-            borderRadius: 16,
-            child: RadioGroup<String>(
-              groupValue: s.languageCode,
-              onChanged: (val) {
-                if (val != null) {
-                  _saveSettingsWithFeedback(
-                    context,
-                    provider,
-                    s.copyWith(languageCode: val),
-                    successMessage: val == 'en'
-                        ? 'Language preference saved to account: English'
-                        : 'Preferensi bahasa disimpan ke akun: Bahasa Indonesia',
-                  );
-                }
-              },
-              child: const Column(
-                children: [
-                  RadioListTile<String>(
-                    value: 'id',
-                    title: Text('Bahasa Indonesia'),
-                    subtitle: Text('Bahasa utama marketplace WijiBumi (Default)'),
-                  ),
-                  Divider(height: 1),
-                  RadioListTile<String>(
-                    value: 'en',
-                    title: Text('English'),
-                    subtitle: Text('Preferensi bahasa disimpan di profil; terjemahan penuh UI menyusul bertahap'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PrivacySettingsScreen extends StatelessWidget {
-  const PrivacySettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppSettingsProvider>();
-    final s = provider.settings;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Privasi')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          GlassContainer(
-            borderRadius: 16,
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Tampilkan Status Online di Chat'),
-                  subtitle: const Text('Izinkan pembeli/penjual melihat status aktif Anda'),
-                  value: s.showOnlineStatus,
-                  onChanged: provider.isSaving
-                      ? null
-                      : (v) => _saveSettingsWithFeedback(
-                            context,
-                            provider,
-                            s.copyWith(showOnlineStatus: v),
-                          ),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Rekomendasi Produk Personalisasi'),
-                  subtitle: const Text('Izinkan WijiBumi menyesuaikan produk berdasarkan preferensi'),
-                  value: s.allowAnalytics,
-                  onChanged: provider.isSaving
-                      ? null
-                      : (v) => _saveSettingsWithFeedback(
-                            context,
-                            provider,
-                            s.copyWith(allowAnalytics: v),
-                          ),
-                ),
-              ],
             ),
           ),
         ],

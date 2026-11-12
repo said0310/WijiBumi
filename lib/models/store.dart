@@ -1,5 +1,6 @@
-class Store {
-  final String id;
+import 'base_entity.dart';
+
+class Store extends BaseEntity {
   final String ownerId;
   final String storeName;
   final String slug;
@@ -21,11 +22,10 @@ class Store {
   final bool isActive;
   final double rating;
   final int totalReviews;
-  final DateTime createdAt;
   final DateTime updatedAt;
 
   Store({
-    required this.id,
+    required super.id,
     required this.ownerId,
     required this.storeName,
     required this.slug,
@@ -47,12 +47,18 @@ class Store {
     this.isActive = false,
     this.rating = 5.0,
     this.totalReviews = 0,
-    required this.createdAt,
+    required super.createdAt,
     required this.updatedAt,
   });
 
   bool get isApproved => verificationStatus == 'approved' && isActive;
 
+    @override
+  String get displayTitle => storeName;
+
+  @override
+  String get displaySubtitle => city ?? 'Lokasi belum diisi';
+  
   String get verificationStatusLabel {
     switch (verificationStatus) {
       case 'approved':

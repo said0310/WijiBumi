@@ -26,6 +26,7 @@ import '../profile/address_list_screen.dart';
 import '../store/store_detail_screen.dart';
 import '../store/store_list_screen.dart';
 import 'product_detail_screen.dart';
+import '../../widgets/weather_card.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onSeeAllStoresTap;
@@ -689,6 +690,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+              ],
+
+              if (showFarmersAndBanner) ...[
+                const WeatherCard(),
                 const SizedBox(height: 16),
               ],
 

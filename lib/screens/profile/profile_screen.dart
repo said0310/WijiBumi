@@ -25,6 +25,7 @@ import 'help_center_screen.dart';
 import 'notifications_screen.dart';
 import 'purchase_history_screen.dart';
 import 'settings_screen.dart';
+import 'wishlist_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -574,6 +575,23 @@ class ProfileScreen extends StatelessWidget {
                         subtitleColor: mutedTextColor,
                         onTap: () =>
                             navigateProtected(const AccountSecurityScreen()),
+                      ),
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 14,
+                        endIndent: 14,
+                        color: borderColor,
+                      ),
+                      _ProfileMenuRow(
+                        icon: Icons.favorite_border,
+                        iconBoxBg: iconBoxBg,
+                        iconColor: accentGreen,
+                        title: 'Wishlist Saya',
+                        subtitle: 'Produk yang Anda simpan di perangkat',
+                        titleColor: titleColor,
+                        subtitleColor: mutedTextColor,
+                        onTap: () => navigateProtected(const WishlistScreen()),
                       ),
                       Divider(
                         height: 1,

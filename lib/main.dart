@@ -15,10 +15,12 @@ import 'providers/address_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/app_settings_provider.dart';
 import 'screens/splash/splash_screen.dart';
+import '../services/wishlist_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.init();
+  await WishlistService.init();
 
   runApp(
     MultiProvider(
