@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/store.dart';
 import '../../models/product.dart';
+import '../../models/review.dart';
 import '../../services/supabase_service.dart';
 import '../../providers/cart_provider.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/lucide_icons.dart';
+import '../../widgets/review_list_card.dart';
+import '../../widgets/smart_image.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/auth_guard.dart';
 import '../chat/chat_room_screen.dart';
 import '../home/product_detail_screen.dart';
 
@@ -22,25 +28,93 @@ class StoreDetailScreen extends StatefulWidget {
 class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Product> _storeProducts = [];
+  List<Review> _storeReviews = [];
   bool _isLoading = true;
+  bool _isLoadingReviews = true;
   String _searchInStore = '';
 
-  final List<String> _categories = ['Semua', 'Bunga', 'Sayuran', 'Buah-buahan'];
+  final List<String> _categories = [
+    'Semua',
+    ...AppConstants.productCategories,
+    'Ulasan',
+  ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
-    _loadStoreProducts();
+    _loadStoreData();
   }
 
-  Future<void> _loadStoreProducts() async {
-    setState(() => _isLoading = true);
-    final prods = await SupabaseService.instance.getStoreProducts(widget.store.id);
+  Future<void> _loadStoreData() async {
     setState(() {
-      _storeProducts = prods;
-      _isLoading = false;
+      _isLoading = true;
+      _isLoadingReviews = true;
     });
+    final productsFuture = SupabaseService.instance
+        .getStoreProducts(widget.store.id)
+        .then<List<Product>?>((val) => val)
+        .catchError((Object e) {
+      debugPrint('Error loading store products: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memuat produk toko. Coba beberapa saat lagi.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return null;
+    });
+    final reviewsFuture = SupabaseService.instance
+        .getStoreReviews(widget.store.id)
+        .catchError((Object e) {
+      debugPrint('Error loading store reviews: $e');
+      return <Review>[];
+    });
+
+    final prods = await productsFuture;
+    final revs = await reviewsFuture;
+    if (!mounted) return;
+    setState(() {
+      if (prods != null) {
+        _storeProducts = prods.where((p) => p.status == 'active').toList();
+      }
+      _storeReviews = revs;
+      _isLoading = false;
+      _isLoadingReviews = false;
+    });
+  }
+
+  Future<void> _handleAddToCart(Product product) async {
+    if (!await ensureBuyerAuthenticated(context)) return;
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final cartProv = context.read<CartProvider>();
+    if (!product.isAvailable) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Maaf, stok produk sedang habis.'),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    final ok = await cartProv.addToCart(product);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? '${product.name} dimasukkan ke keranjang'
+              : (cartProv.lastError ??
+                  'Jumlah melebihi stok tersedia (${product.stock} ${product.unit}).'),
+        ),
+        backgroundColor: ok ? null : AppColors.warning,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -75,14 +149,19 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
             SliverAppBar(
               expandedHeight: 200,
               pinned: true,
+              foregroundColor: innerBoxIsScrolled
+                  ? (isDark ? Colors.white : AppColors.textPrimaryLight)
+                  : Colors.white,
               title: innerBoxIsScrolled ? Text(store.storeName) : null,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.chat_outlined),
+                  icon: const LucideMessageCircleIcon(size: 28),
                   tooltip: 'Chat Toko',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    if (!await ensureBuyerAuthenticated(context)) return;
+                    if (!mounted) return;
+                    navigator.push(
                       MaterialPageRoute(
                         builder: (_) => ChatRoomScreen(
                           storeId: store.id,
@@ -98,10 +177,11 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      store.coverPath ?? 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80',
+                    SmartImage(
+                      source: store.coverPath ??
+                          'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: AppColors.primaryDark),
+                      fallback: Container(color: AppColors.primaryDark),
                     ),
                     Container(
                       decoration: BoxDecoration(
@@ -109,8 +189,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withOpacity(0.3),
-                            Colors.black.withOpacity(0.7),
+                            Colors.black.withValues(alpha: 0.35),
+                            Colors.black.withValues(alpha: 0.72),
                           ],
                         ),
                       ),
@@ -126,8 +206,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                             child: SizedBox(
                               width: 60,
                               height: 60,
-                              child: Image.network(
-                                store.logoPath ?? 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=300&q=80',
+                              child: SmartImage(
+                                source: store.logoPath ??
+                                    'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=300&q=80',
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -151,12 +232,30 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    const Icon(Icons.verified, color: AppColors.primaryLight, size: 18),
+                                    if (store.isApproved)
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 4),
+                                        child: Icon(Icons.verified, color: AppColors.primaryLight, size: 18),
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${store.city ?? ''}, ${store.province ?? ''}',
+                                  [
+                                    if (store.city != null && store.city!.trim().isNotEmpty)
+                                      store.city!.trim(),
+                                    if (store.province != null && store.province!.trim().isNotEmpty)
+                                      store.province!.trim(),
+                                  ].join(', ').isNotEmpty
+                                      ? [
+                                          if (store.city != null && store.city!.trim().isNotEmpty)
+                                            store.city!.trim(),
+                                          if (store.province != null && store.province!.trim().isNotEmpty)
+                                            store.province!.trim(),
+                                        ].join(', ')
+                                      : 'Indonesia',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                                 ),
                               ],
@@ -212,22 +311,93 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Row(
+                          Wrap(
+                            spacing: 16,
+                            runSpacing: 6,
                             children: [
-                              const Icon(Icons.phone_outlined, size: 14, color: AppColors.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                store.phone ?? '-',
-                                style: const TextStyle(fontSize: 12),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.phone_outlined, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      store.phone ?? '-',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 16),
-                              const Icon(Icons.email_outlined, size: 14, color: AppColors.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                store.email ?? '-',
-                                style: const TextStyle(fontSize: 12),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.email_outlined, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      store.email ?? '-',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 10),
+                          InkWell(
+                            onTap: () => _tabController.animateTo(_categories.length - 1),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 16,
+                                    color: AppColors.secondary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      _storeReviews.isNotEmpty
+                                          ? '${(_storeReviews.fold<int>(0, (sum, r) => sum + r.rating) / _storeReviews.length).toStringAsFixed(1)} (${_storeReviews.length} Ulasan Pembeli)'
+                                          : (store.totalReviews > 0
+                                              ? '${store.rating.toStringAsFixed(1)} (${store.totalReviews} Ulasan)'
+                                              : 'Lihat Ulasan Pembeli'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? AppColors.primaryLight
+                                            : AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    size: 16,
+                                    color: isDark
+                                        ? AppColors.primaryLight
+                                        : AppColors.primary,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -258,7 +428,12 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                   indicatorColor: isDark ? AppColors.primaryLight : AppColors.primary,
                   labelColor: isDark ? AppColors.primaryLight : AppColors.primary,
                   unselectedLabelColor: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                  tabs: _categories.map((c) => Tab(text: c)).toList(),
+                  tabs: _categories.map((c) {
+                    if (c == 'Ulasan' && _storeReviews.isNotEmpty) {
+                      return Tab(text: 'Ulasan (${_storeReviews.length})');
+                    }
+                    return Tab(text: c);
+                  }).toList(),
                 ),
                 color: theme.scaffoldBackgroundColor,
               ),
@@ -270,6 +445,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
             : TabBarView(
                 controller: _tabController,
                 children: List.generate(_categories.length, (tabIndex) {
+                  if (_categories[tabIndex] == 'Ulasan') {
+                    return _buildReviewsTab(isDark);
+                  }
                   final prods = _getFilteredProducts(tabIndex);
                   if (prods.isEmpty) {
                     return const EmptyState(
@@ -280,9 +458,13 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.68,
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 215,
+                      mainAxisExtent: (256.0 *
+                              MediaQuery.textScalerOf(context)
+                                  .scale(1.0)
+                                  .clamp(1.0, 1.35))
+                          .ceilToDouble(),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 14,
                     ),
@@ -299,21 +481,76 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> with SingleTicker
                             ),
                           );
                         },
-                        onAddToCart: () {
-                          context.read<CartProvider>().addToCart(product);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${product.name} dimasukkan ke keranjang'),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
+                        onAddToCart: () => _handleAddToCart(product),
                       );
                     },
                   );
                 }),
               ),
       ),
+    );
+  }
+
+  Widget _buildReviewsTab(bool isDark) {
+    if (_isLoadingReviews) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_storeReviews.isEmpty) {
+      return const EmptyState(
+        icon: Icons.rate_review_outlined,
+        title: 'Belum Ada Ulasan',
+        message: 'Jadilah pembeli pertama yang memberikan ulasan untuk kebun mitra ini.',
+      );
+    }
+    final avgRating = _storeReviews.fold<int>(0, (sum, r) => sum + r.rating) /
+        _storeReviews.length;
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _storeReviews.length + 1,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.primary.withValues(alpha: 0.14)
+                  : const Color(0xFFEBF5EE),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.star_rounded, color: AppColors.secondary, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${avgRating.toStringAsFixed(1)} / 5.0',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        'Berdasarkan ${_storeReviews.length} ulasan pembeli terverifikasi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return BuyerReviewTileCard(review: _storeReviews[index - 1]);
+      },
     );
   }
 }
@@ -339,6 +576,6 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
+    return color != oldDelegate.color || tabBar != oldDelegate.tabBar;
   }
 }

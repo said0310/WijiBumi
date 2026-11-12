@@ -10,14 +10,16 @@ import '../models/chat.dart';
 import '../models/review.dart';
 import '../models/promotion.dart';
 import '../models/payout.dart';
+import '../models/app_notification.dart';
 
 class MockData {
   static final UserProfile defaultUser = UserProfile(
     id: 'usr-1111-2222-3333',
     fullName: 'Budi Santoso',
-    email: 'budi.santoso@tanihub.id',
+    email: 'budi.santoso@wijibumi.id',
     phone: '081234567890',
     avatarPath: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+    role: 'both',
     createdAt: DateTime.now().subtract(const Duration(days: 90)),
     updatedAt: DateTime.now().subtract(const Duration(days: 5)),
   );
@@ -44,6 +46,27 @@ class MockData {
       description: 'Buah-buahan tropis manis dan segar petik matang pohon',
       icon: 'apple',
     ),
+    Category(
+      id: 'cat-4-rempah',
+      name: 'Rempah-rempah',
+      slug: 'rempah-rempah',
+      description: 'Rempah-rempah segar dan kering pilihan langsung dari petani',
+      icon: 'spa',
+    ),
+    Category(
+      id: 'cat-5-bibit',
+      name: 'Bibit & Benih',
+      slug: 'bibit-benih',
+      description: 'Bibit unggul dan benih tanaman hortikultura siap tanam',
+      icon: 'grass',
+    ),
+    Category(
+      id: 'cat-6-umbi',
+      name: 'Umbi-umbian',
+      slug: 'umbi-umbian',
+      description: 'Umbi-umbian segar kualitas terbaik langsung dari kebun',
+      icon: 'yard',
+    ),
   ];
 
   static final List<Store> stores = [
@@ -64,8 +87,9 @@ class MockData {
       postalCode: '40559',
       latitude: -6.8123,
       longitude: 107.5932,
+      operatingHours: '06:00 - 17:00 WIB',
       verificationStatus: 'approved',
-      verificationNote: 'Toko telah lolos verifikasi standar agritech mitra TaniHub.',
+      verificationNote: 'Toko telah lolos verifikasi standar agritech mitra WijiBumi.',
       isActive: true,
       rating: 4.9,
       totalReviews: 128,
@@ -391,6 +415,87 @@ class MockData {
       rating: 4.9,
       totalSales: 94,
     ),
+    // --- REMPAH-REMPAH ---
+    Product(
+      id: 'prod-10-kunyit',
+      storeId: 'store-2-malang',
+      categoryId: 'cat-4-rempah',
+      name: 'Kunyit Merah Segar Organik',
+      description: 'Rimpang kunyit merah segar pilihan dengan aroma kuat dan kandungan kurkumin tinggi, cocok untuk jamu dan bumbu masakan.',
+      price: 22000,
+      unit: 'kg',
+      stock: 45,
+      qualityGrade: 'A',
+      harvestDate: DateTime.now().subtract(const Duration(days: 1)),
+      shelfLifeDays: 14,
+      farmLocation: 'Batu, Malang',
+      status: 'active',
+      createdAt: DateTime.now().subtract(const Duration(days: 5)),
+      updatedAt: DateTime.now(),
+      images: [
+        'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?auto=format&fit=crop&w=600&q=80',
+      ],
+      categoryName: 'Rempah-rempah',
+      storeName: 'Tani Makmur Batu Malang',
+      storeCity: 'Kota Batu',
+      storeLogo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
+      rating: 4.9,
+      totalSales: 62,
+    ),
+    // --- BIBIT & BENIH ---
+    Product(
+      id: 'prod-11-benih-cabai',
+      storeId: 'store-3-bogor',
+      categoryId: 'cat-5-bibit',
+      name: 'Benih Cabai Rawit Unggul F1',
+      description: 'Benih cabai rawit varietas unggul tahan penyakit dengan daya berkecambah tinggi (>88%), siap semai di pot maupun lahan.',
+      price: 35000,
+      unit: 'pack',
+      stock: 80,
+      qualityGrade: 'A',
+      harvestDate: DateTime.now().subtract(const Duration(days: 3)),
+      shelfLifeDays: 180,
+      farmLocation: 'Tamansari, Bogor',
+      status: 'active',
+      createdAt: DateTime.now().subtract(const Duration(days: 4)),
+      updatedAt: DateTime.now(),
+      images: [
+        'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=600&q=80',
+      ],
+      categoryName: 'Bibit & Benih',
+      storeName: 'Hidroponik Surya Hijau',
+      storeCity: 'Kabupaten Bogor',
+      storeLogo: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=300&q=80',
+      rating: 4.8,
+      totalSales: 71,
+    ),
+    // --- UMBI-UMBIAN ---
+    Product(
+      id: 'prod-12-ubi-cilembu',
+      storeId: 'store-2-malang',
+      categoryId: 'cat-6-umbi',
+      name: 'Ubi Cilembu Madu Pilihan',
+      description: 'Ubi jalar Cilembu asli pilihan sortir ukuran merata, mengeluarkan madu manis alami saat dipanggang atau dikukus.',
+      price: 26000,
+      unit: 'kg',
+      stock: 60,
+      qualityGrade: 'A',
+      harvestDate: DateTime.now().subtract(const Duration(days: 1)),
+      shelfLifeDays: 21,
+      farmLocation: 'Sumedang & Batu',
+      status: 'active',
+      createdAt: DateTime.now().subtract(const Duration(days: 3)),
+      updatedAt: DateTime.now(),
+      images: [
+        'https://images.unsplash.com/photo-1596097635121-14b63b7a0c19?auto=format&fit=crop&w=600&q=80',
+      ],
+      categoryName: 'Umbi-umbian',
+      storeName: 'Tani Makmur Batu Malang',
+      storeCity: 'Kota Batu',
+      storeLogo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
+      rating: 4.9,
+      totalSales: 83,
+    ),
   ];
 
   static final List<Address> addresses = [
@@ -401,6 +506,7 @@ class MockData {
       recipientName: 'Budi Santoso',
       phone: '081234567890',
       address: 'Jl. Melati No. 12, RT 03 / RW 05',
+      kelurahan: 'Gondangdia',
       district: 'Menteng',
       city: 'Jakarta Pusat',
       province: 'DKI Jakarta',
@@ -417,6 +523,7 @@ class MockData {
       recipientName: 'Budi Santoso',
       phone: '081234567890',
       address: 'Gedung Wisma Tani Lt. 4, Jl. Gatot Subroto No. 45',
+      kelurahan: 'Karet Semanggi',
       district: 'Setiabudi',
       city: 'Jakarta Selatan',
       province: 'DKI Jakarta',
@@ -452,7 +559,7 @@ class MockData {
   static List<Order> initialOrders = [
     Order(
       id: 'ord-101',
-      orderCode: 'TANI-20261108-001',
+      orderCode: 'WIJI-20261108-001',
       buyerId: 'usr-1111-2222-3333',
       storeId: 'store-2-malang',
       addressId: 'addr-default-1',
@@ -538,7 +645,7 @@ class MockData {
     ),
     Order(
       id: 'ord-102',
-      orderCode: 'TANI-20261106-088',
+      orderCode: 'WIJI-20261106-088',
       buyerId: 'usr-1111-2222-3333',
       storeId: 'store-1-lembang',
       addressId: 'addr-default-1',
@@ -605,7 +712,7 @@ class MockData {
     ),
     Order(
       id: 'ord-103',
-      orderCode: 'TANI-20261109-003',
+      orderCode: 'WIJI-20261109-003',
       buyerId: 'usr-1111-2222-3333',
       storeId: 'store-3-bogor',
       addressId: 'addr-default-1',
@@ -660,9 +767,11 @@ class MockData {
       storeName: 'Tani Makmur Batu Malang',
       storeLogo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
       buyerName: 'Budi Santoso',
+      buyerAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
       lastMessageBody: 'Baik Pak, apel sudah kami pilihkan yang paling manis dan segar ya.',
       productName: 'Apel Manalagi Batu Malang Asli',
       productImage: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=600&q=80',
+      unreadCount: 0,
     ),
     Chat(
       id: 'chat-2',
@@ -674,9 +783,27 @@ class MockData {
       storeName: 'Hidroponik Surya Hijau',
       storeLogo: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=300&q=80',
       buyerName: 'Budi Santoso',
+      buyerAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
       lastMessageBody: 'Apakah selada hidroponiknya ready 5 pack untuk dikirim besok pagi?',
       productName: 'Selada Keriting Hijau Hidroponik',
       productImage: 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=600&q=80',
+      unreadCount: 0,
+    ),
+    Chat(
+      id: 'chat-3',
+      buyerId: 'usr-customer-rina',
+      storeId: 'store-1-lembang',
+      productId: 'prod-1-mawar',
+      lastMessageAt: DateTime.now().subtract(const Duration(minutes: 12)),
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      storeName: 'Kebun Berkah Lembang',
+      storeLogo: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=300&q=80',
+      buyerName: 'Rina Wijaya',
+      buyerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+      lastMessageBody: 'Halo Kak, apakah Mawar Merah Holland bisa dikirim sore ini?',
+      productName: 'Bunga Mawar Merah Holland Segar',
+      productImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+      unreadCount: 1,
     ),
   ];
 
@@ -712,6 +839,14 @@ class MockData {
       messageType: 'text',
       body: 'Baik Pak, apel sudah kami pilihkan yang paling manis dan segar ya.',
       createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+    ),
+    ChatMessage(
+      id: 'msg-5',
+      chatId: 'chat-3',
+      senderId: 'usr-customer-rina',
+      messageType: 'text',
+      body: 'Halo Kak, apakah Mawar Merah Holland bisa dikirim sore ini?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
     ),
   ];
 
@@ -792,6 +927,49 @@ class MockData {
       requestedAt: DateTime.now().subtract(const Duration(days: 7)),
       processedAt: DateTime.now().subtract(const Duration(days: 6)),
       account: initialPayoutAccounts.first,
+    ),
+  ];
+
+  static List<AppNotification> initialNotifications = [
+    AppNotification(
+      id: 'notif-1',
+      userId: 'usr-1111-2222-3333',
+      type: 'shipment',
+      title: 'Pesanan WIJI-20261108-001 Sedang Dikirim',
+      body: 'Paket Apel Manalagi Batu Malang telah tiba di Hub Transit Jakarta Barat.',
+      referenceId: 'ord-101',
+      isRead: false,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    AppNotification(
+      id: 'notif-2',
+      userId: 'usr-1111-2222-3333',
+      type: 'chat',
+      title: 'Pesan baru dari Tani Makmur Batu Malang',
+      body: 'Baik Pak, apel sudah kami pilihkan yang paling manis dan segar ya.',
+      referenceId: 'chat-1',
+      isRead: false,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+    ),
+    AppNotification(
+      id: 'notif-3',
+      userId: 'usr-1111-2222-3333',
+      type: 'transaction',
+      title: 'Pembayaran Menunggu untuk WIJI-20261109-003',
+      body: 'Selesaikan pembayaran Rp 37.000 melalui Transfer Mandiri agar pesanan segera diproses.',
+      referenceId: 'ord-103',
+      isRead: false,
+      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+    AppNotification(
+      id: 'notif-4',
+      userId: 'usr-1111-2222-3333',
+      type: 'order',
+      title: 'Pesanan WIJI-20261106-088 Selesai',
+      body: 'Terima kasih telah berbelanja Anggrek Bulan Putih Premium di Kebun Berkah Lembang.',
+      referenceId: 'ord-102',
+      isRead: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
     ),
   ];
 }

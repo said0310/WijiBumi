@@ -1,5 +1,7 @@
-class Product {
-  final String id;
+import '../core/utils/currency_formatter.dart';
+import 'base_entity.dart';
+
+class Product extends BaseEntity {
   final String storeId;
   final String categoryId;
   final String name;
@@ -12,7 +14,6 @@ class Product {
   final int? shelfLifeDays;
   final String? farmLocation;
   final String status; // 'draft', 'active', 'inactive'
-  final DateTime createdAt;
   final DateTime updatedAt;
 
   // Joined/Display helpers
@@ -25,7 +26,7 @@ class Product {
   final int totalSales;
 
   Product({
-    required this.id,
+    required super.id,
     required this.storeId,
     required this.categoryId,
     required this.name,
@@ -38,7 +39,7 @@ class Product {
     this.shelfLifeDays,
     this.farmLocation,
     this.status = 'active',
-    required this.createdAt,
+    required super.createdAt,
     required this.updatedAt,
     this.images = const [],
     this.categoryName,
@@ -54,6 +55,13 @@ class Product {
       : 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80';
 
   bool get isAvailable => stock > 0 && status == 'active';
+
+    @override
+  String get displayTitle => name;
+
+  @override
+  String get displaySubtitle =>
+      "${CurrencyFormatter.format(price)} / $unit • ${storeCity ?? farmLocation ?? '-'}";
 
   factory Product.fromJson(Map<String, dynamic> json) {
     List<String> imgList = [];
@@ -118,9 +126,8 @@ class Product {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+  Map<String, dynamic> toJson({bool includeId = true}) {
+    final map = <String, dynamic>{
       'store_id': storeId,
       'category_id': categoryId,
       'name': name,
@@ -136,6 +143,10 @@ class Product {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (includeId) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   Product copyWith({
@@ -155,6 +166,8 @@ class Product {
     String? storeName,
     String? storeCity,
     String? storeLogo,
+    double? rating,
+    int? totalSales,
   }) {
     return Product(
       id: id,
@@ -177,8 +190,8 @@ class Product {
       storeName: storeName ?? this.storeName,
       storeCity: storeCity ?? this.storeCity,
       storeLogo: storeLogo ?? this.storeLogo,
-      rating: rating,
-      totalSales: totalSales,
+      rating: rating ?? this.rating,
+      totalSales: totalSales ?? this.totalSales,
     );
   }
 }

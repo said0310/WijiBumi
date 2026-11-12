@@ -1,12 +1,12 @@
 {
-    "name": "wijibumi",
-    "short_name": "wijibumi",
+    "name": "WijiBumi",
+    "short_name": "WijiBumi",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F1F7EC",
+    "theme_color": "#173F2A",
+    "description": "Wiji Bumi - Tumbuh Bersama, Sejahtera Bersama. Marketplace agritech hasil panen segar langsung dari petani.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

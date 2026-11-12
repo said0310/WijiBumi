@@ -46,6 +46,19 @@ class ChatMessage {
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  ChatMessage copyWith({DateTime? readAt}) {
+    return ChatMessage(
+      id: id,
+      chatId: chatId,
+      senderId: senderId,
+      messageType: messageType,
+      body: body,
+      mediaPath: mediaPath,
+      readAt: readAt ?? this.readAt,
+      createdAt: createdAt,
+    );
+  }
 }
 
 class Chat {
@@ -60,9 +73,11 @@ class Chat {
   final String? storeName;
   final String? storeLogo;
   final String? buyerName;
+  final String? buyerAvatar;
   final String? lastMessageBody;
   final String? productName;
   final String? productImage;
+  final int unreadCount;
 
   Chat({
     required this.id,
@@ -74,9 +89,11 @@ class Chat {
     this.storeName,
     this.storeLogo,
     this.buyerName,
+    this.buyerAvatar,
     this.lastMessageBody,
     this.productName,
     this.productImage,
+    this.unreadCount = 0,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -91,12 +108,24 @@ class Chat {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
-      storeName: json['stores'] != null ? json['stores']['store_name'] as String? : json['store_name'] as String?,
-      storeLogo: json['stores'] != null ? json['stores']['logo_path'] as String? : json['store_logo'] as String?,
-      buyerName: json['profiles'] != null ? json['profiles']['full_name'] as String? : json['buyer_name'] as String?,
+      storeName: json['stores'] != null
+          ? json['stores']['store_name'] as String?
+          : json['store_name'] as String?,
+      storeLogo: json['stores'] != null
+          ? json['stores']['logo_path'] as String?
+          : json['store_logo'] as String?,
+      buyerName: json['profiles'] != null
+          ? json['profiles']['full_name'] as String?
+          : json['buyer_name'] as String?,
+      buyerAvatar: json['profiles'] != null
+          ? json['profiles']['avatar_path'] as String?
+          : json['buyer_avatar'] as String?,
       lastMessageBody: json['last_message_body'] as String?,
-      productName: json['products'] != null ? json['products']['name'] as String? : json['product_name'] as String?,
+      productName: json['products'] != null
+          ? json['products']['name'] as String?
+          : json['product_name'] as String?,
       productImage: json['product_image'] as String?,
+      unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -109,5 +138,28 @@ class Chat {
       'last_message_at': lastMessageAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
+  }
+
+  Chat copyWith({
+    DateTime? lastMessageAt,
+    String? lastMessageBody,
+    int? unreadCount,
+  }) {
+    return Chat(
+      id: id,
+      buyerId: buyerId,
+      storeId: storeId,
+      productId: productId,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      createdAt: createdAt,
+      storeName: storeName,
+      storeLogo: storeLogo,
+      buyerName: buyerName,
+      buyerAvatar: buyerAvatar,
+      lastMessageBody: lastMessageBody ?? this.lastMessageBody,
+      productName: productName,
+      productImage: productImage,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
   }
 }
