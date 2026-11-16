@@ -277,7 +277,7 @@ void main() {
     expect(provider.settings.promoNotifications, isTrue);
   });
 
-  testWidgets('AddEditAddressScreen validates phone/postal/paired coordinates and guards unsaved back', (
+  testWidgets('AddEditAddressScreen validates postal, shows map delivery section, and guards unsaved back', (
     tester,
   ) async {
     final authProv = AuthProvider();
@@ -287,6 +287,10 @@ void main() {
       _wrapWithProviders(const AddEditAddressScreen(), authProvider: authProv),
     );
     await tester.pumpAndSettle();
+
+    expect(find.text('Lokasi Pengiriman'), findsOneWidget);
+    expect(find.text('Lokasi belum ditentukan'), findsOneWidget);
+    expect(find.text('Pilih Lokasi di Peta'), findsOneWidget);
 
     final postalField = find.descendant(
       of: find.widgetWithText(CustomTextField, 'Kode Pos'),
@@ -301,20 +305,6 @@ void main() {
     await tester.enterText(postalField, '12a');
     await tester.pumpAndSettle();
     expect(find.text('Kode pos harus 5 digit angka'), findsOneWidget);
-
-    final latField = find.descendant(
-      of: find.widgetWithText(CustomTextField, 'Latitude'),
-      matching: find.byType(TextFormField),
-    );
-    await tester.scrollUntilVisible(
-      find.widgetWithText(CustomTextField, 'Latitude'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(latField);
-    await tester.enterText(latField, '-6.1944');
-    await tester.pumpAndSettle();
-    expect(find.text('Longitude wajib diisi bersama Latitude'), findsOneWidget);
 
     final cancelBtn = find.text('Batal');
     await tester.scrollUntilVisible(
