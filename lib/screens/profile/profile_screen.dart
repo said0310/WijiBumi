@@ -11,11 +11,11 @@ import '../../providers/notification_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/auth_guard.dart';
 import '../../widgets/glass_widgets.dart';
 import '../../widgets/smart_image.dart';
 import '../auth/login_screen.dart';
 import '../store/register_store_screen.dart';
-import '../store/seller_auth/seller_login_screen.dart';
 import '../store/seller_dashboard/seller_main_navigation_screen.dart';
 import 'about_screen.dart';
 import 'account_security_screen.dart';
@@ -356,22 +356,20 @@ class ProfileScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
-                      onTap: () {
-                        if (authProvider.isSellerSessionAuthenticated) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => storeProvider.hasStore
-                                  ? const SellerMainNavigationScreen()
-                                  : const RegisterStoreScreen(),
-                            ),
-                          );
-                          return;
+                      onTap: () async {
+                        if (!await ensureBuyerAuthenticated(context)) return;
+                        if (!context.mounted) return;
+                        authProvider.restoreSellerSessionIfEligible();
+                        if (!storeProvider.hasStore) {
+                          await storeProvider.checkMyStore();
                         }
+                        if (!context.mounted) return;
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const SellerLoginScreen(),
+                            builder: (_) => storeProvider.hasStore
+                                ? const SellerMainNavigationScreen()
+                                : const RegisterStoreScreen(),
                           ),
                         );
                       },
@@ -442,10 +440,7 @@ class ProfileScreen extends StatelessWidget {
                                   const SizedBox(height: 3),
                                   Text(
                                     storeProvider.hasStore
-                                        ? (authProvider
-                                                .isSellerSessionAuthenticated
-                                            ? 'Buka dashboard toko "${storeProvider.myStore?.storeName ?? ''}"'
-                                            : 'Masuk portal penjual untuk kelola "${storeProvider.myStore?.storeName ?? ''}"')
+                                        ? 'Buka dashboard toko "${storeProvider.myStore?.storeName ?? ''}"'
                                         : 'Kelola produk, stok & pesanan toko di Pasar Tani',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,

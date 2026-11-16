@@ -338,17 +338,11 @@ void main() {
     expect(find.byType(LoginScreen), findsOneWidget);
   });
 
-  testWidgets('Buyer Profile Toko Saya routes to SellerLoginScreen and rejects buyer-only account',
+  testWidgets('Buyer Profile Toko Saya navigates directly without separate seller login',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 2200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
-
-    SupabaseService.instance.sellerLoginTestHook = (email, password) async =>
-        const SellerAuthResult(
-          status: SellerAuthStatus.notSeller,
-          message: 'Akun ini terdaftar sebagai pembeli dan belum memiliki akses penjual.',
-        );
 
     await tester.pumpWidget(_buildTestApp(home: const MainNavigationScreen()));
     await tester.pumpAndSettle();
@@ -359,30 +353,10 @@ void main() {
     await tester.tap(find.text('Toko Saya'));
     await tester.pumpAndSettle();
 
-    // Pastikan tidak langsung masuk ke Dashboard Penjual, melainkan ke Login Penjual
-    expect(find.byType(SellerLoginScreen), findsOneWidget);
-    expect(find.byType(SellerDashboardScreen), findsNothing);
-    expect(find.text('Login Penjual'), findsOneWidget);
-    expect(find.text('Masuk untuk mengelola toko dan pesanan Anda.'), findsOneWidget);
-    expect(find.text('Daftar Akun Penjual'), findsOneWidget);
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'contoh@kebun.id'),
-      'pembeli@wijibumi.id',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Masukkan password Anda'),
-      'password123',
-    );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SellerLoginScreen), findsOneWidget);
-    expect(
-      find.text('Akun ini terdaftar sebagai pembeli dan belum memiliki akses penjual.'),
-      findsOneWidget,
-    );
-    expect(find.text('Daftar Akun Penjual Sekarang'), findsOneWidget);
+    // Pastikan tidak membuka SellerLoginScreen lagi, melainkan langsung ke dashboard toko
+    expect(find.byType(SellerLoginScreen), findsNothing);
+    expect(find.byType(SellerMainNavigationScreen), findsOneWidget);
+    expect(find.text('Kebun Berkah Lembang'), findsWidgets);
   });
 
   testWidgets('SellerRegisterScreen redirects back to SellerLoginScreen -> Seller login -> RegisterStoreScreen -> SellerMainNavigationScreen',
