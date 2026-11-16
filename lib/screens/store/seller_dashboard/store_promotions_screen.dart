@@ -10,102 +10,162 @@ import '../../../widgets/empty_state.dart';
 class StorePromotionsScreen extends StatelessWidget {
   const StorePromotionsScreen({super.key});
 
-  void _showAddPromotionDialog(BuildContext context, StoreProvider provider) {
+  Future<void> _showAddPromotionDialog(BuildContext context, StoreProvider provider) async {
+    final store = provider.myStore;
+    if (store == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data toko tidak ditemukan.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     final titleController = TextEditingController();
     final codeController = TextEditingController();
     final valueController = TextEditingController();
     final minPurchaseController = TextEditingController();
     String promoType = 'percentage';
+    bool isSaving = false;
+    String? errorMsg;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Buat Voucher Promo Baru'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Judul Promo', hintText: 'Diskon Panen 10%'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: codeController,
-                    decoration: const InputDecoration(labelText: 'Kode Voucher', hintText: 'PANEN10'),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: promoType,
-                    decoration: const InputDecoration(labelText: 'Tipe Promo'),
-                    items: const [
-                      DropdownMenuItem(value: 'percentage', child: Text('Persentase (%)')),
-                      DropdownMenuItem(value: 'fixed_amount', child: Text('Nominal Tetap (Rp)')),
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Buat Voucher Promo Baru'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (errorMsg != null) ...[
+                      Text(
+                        errorMsg!,
+                        style: const TextStyle(color: AppColors.error, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
                     ],
-                    onChanged: (val) {
-                      if (val != null) setDialogState(() => promoType = val);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: promoType == 'percentage' ? 'Besar Diskon (%)' : 'Potongan Harga (Rp)',
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Judul Promo', hintText: 'Diskon Panen 10%'),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: minPurchaseController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Minimal Pembelian (Rp)',
-                      hintText: '50000',
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: codeController,
+                      decoration: const InputDecoration(labelText: 'Kode Voucher', hintText: 'PANEN10'),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: promoType,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Tipe Promo'),
+                      items: const [
+                        DropdownMenuItem(value: 'percentage', child: Text('Persentase (%)')),
+                        DropdownMenuItem(value: 'fixed_amount', child: Text('Nominal Tetap (Rp)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => promoType = val);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: promoType == 'percentage' ? 'Besar Diskon (%)' : 'Potongan Harga (Rp)',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: minPurchaseController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Minimal Pembelian (Rp)',
+                        hintText: '50000',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-              ElevatedButton(
-                onPressed: () async {
-                  if (titleController.text.trim().isNotEmpty && valueController.text.trim().isNotEmpty) {
-                    final store = provider.myStore!;
-                    final promo = Promotion(
-                      id: 'promo-${DateTime.now().millisecondsSinceEpoch}',
-                      storeId: store.id,
-                      title: titleController.text.trim(),
-                      code: codeController.text.trim().toUpperCase(),
-                      promotionType: promoType,
-                      value: double.tryParse(valueController.text.trim()) ?? 0,
-                      minimumPurchase: double.tryParse(minPurchaseController.text.trim()) ?? 0,
-                      startsAt: DateTime.now(),
-                      endsAt: DateTime.now().add(const Duration(days: 30)),
-                      quota: 100,
-                      isActive: true,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    );
-                    await provider.addPromotion(promo);
-                    if (context.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Voucher promo berhasil diterbitkan!')),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Terbitkan Voucher'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final title = titleController.text.trim();
+                          final parsedVal = double.tryParse(valueController.text.trim()) ?? 0;
+                          final minPurchase =
+                              double.tryParse(minPurchaseController.text.trim()) ?? 0;
+                          if (title.isEmpty) {
+                            setDialogState(() => errorMsg = 'Judul promo wajib diisi');
+                            return;
+                          }
+                          if (parsedVal <= 0) {
+                            setDialogState(() => errorMsg = 'Nilai diskon harus lebih dari 0');
+                            return;
+                          }
+                          if (promoType == 'percentage' && parsedVal > 100) {
+                            setDialogState(() => errorMsg = 'Diskon persentase maksimal 100%');
+                            return;
+                          }
+
+                          setDialogState(() {
+                            isSaving = true;
+                            errorMsg = null;
+                          });
+
+                          final trimmedCode = codeController.text.trim().toUpperCase();
+                          final promo = Promotion(
+                            id: 'promo-${DateTime.now().millisecondsSinceEpoch}',
+                            storeId: store.id,
+                            title: title,
+                            code: trimmedCode.isNotEmpty ? trimmedCode : null,
+                            promotionType: promoType,
+                            value: parsedVal,
+                            minimumPurchase: minPurchase < 0 ? 0 : minPurchase,
+                            startsAt: DateTime.now(),
+                            endsAt: DateTime.now().add(const Duration(days: 30)),
+                            quota: 100,
+                            isActive: true,
+                            createdAt: DateTime.now(),
+                            updatedAt: DateTime.now(),
+                          );
+                          try {
+                            await provider.addPromotion(promo);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Voucher promo berhasil diterbitkan!')),
+                              );
+                            }
+                          } catch (_) {
+                            setDialogState(() {
+                              isSaving = false;
+                              errorMsg = 'Gagal menerbitkan voucher. Periksa data atau kode promo.';
+                            });
+                          }
+                        },
+                  child: const Text('Terbitkan Voucher'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      titleController.dispose();
+      codeController.dispose();
+      valueController.dispose();
+      minPurchaseController.dispose();
+    }
   }
 
   @override
@@ -136,76 +196,90 @@ class StorePromotionsScreen extends StatelessWidget {
               onButtonPressed: () => _showAddPromotionDialog(context, storeProvider),
             )
           : ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                96 + MediaQuery.paddingOf(context).bottom,
+              ),
               itemCount: promotions.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final promo = promotions[index];
 
-                return Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withOpacity(0.12),
-                          shape: BoxShape.circle,
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 780),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
                         ),
-                        child: const Icon(Icons.discount, color: AppColors.secondary, size: 24),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              promo.title,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
+                            child: const Icon(Icons.discount, color: AppColors.secondary, size: 24),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.grey[800] : Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    promo.code ?? 'PROMO',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
                                 Text(
-                                  promo.promotionType == 'percentage'
-                                      ? 'Diskon ${promo.value.toInt()}%'
-                                      : 'Diskon ${CurrencyFormatter.format(promo.value)}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? AppColors.primaryLight : AppColors.primary,
-                                  ),
+                                  promo.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        promo.code ?? 'PROMO',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    Text(
+                                      promo.promotionType == 'percentage'
+                                          ? 'Diskon ${promo.value.toInt()}%'
+                                          : 'Diskon ${CurrencyFormatter.format(promo.value)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Min. belanja: ${CurrencyFormatter.format(promo.minimumPurchase)} • Berlaku s.d ${DateFormatter.formatShort(promo.endsAt)}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Min. belanja: ${CurrencyFormatter.format(promo.minimumPurchase)} • Berlaku s.d ${DateFormatter.formatShort(promo.endsAt)}',
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 );
               },

@@ -6,9 +6,15 @@ class SupabaseConfig {
   static const String _keyUrl = 'supabase_url';
   static const String _keyAnonKey = 'supabase_anon_key';
 
-  // Environment variables or defaults
-  static const String envUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-  static const String envAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+  // Environment variables or defaults (can be overridden via --dart-define / env.json)
+  static const String envUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://skwdxgtwdhxualtgxfsj.supabase.co',
+  );
+  static const String envAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_01hTrn-yZsEF8-eFGo_Tyg_5p6vPK8Q',
+  );
 
   static String currentUrl = envUrl;
   static String currentAnonKey = envAnonKey;
@@ -16,17 +22,21 @@ class SupabaseConfig {
 
   static Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedUrl = prefs.getString(_keyUrl);
-      final savedAnonKey = prefs.getString(_keyAnonKey);
+      String? savedUrl;
+      String? savedAnonKey;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        savedUrl = prefs.getString(_keyUrl);
+        savedAnonKey = prefs.getString(_keyAnonKey);
+      } catch (_) {}
 
-      currentUrl = savedUrl?.isNotEmpty == true ? savedUrl! : envUrl;
-      currentAnonKey = savedAnonKey?.isNotEmpty == true ? savedAnonKey! : envAnonKey;
+      currentUrl = envUrl.isNotEmpty ? envUrl : (savedUrl ?? '');
+      currentAnonKey = envAnonKey.isNotEmpty ? envAnonKey : (savedAnonKey ?? '');
 
       if (currentUrl.isNotEmpty && currentAnonKey.isNotEmpty) {
         await Supabase.initialize(
           url: currentUrl,
-          anonKey: currentAnonKey,
+          publishableKey: currentAnonKey,
           debug: kDebugMode,
         );
         isInitialized = true;
@@ -38,27 +48,45 @@ class SupabaseConfig {
   }
 
   static Future<bool> updateCredentials(String url, String anonKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUrl, url.trim());
-    await prefs.setString(_keyAnonKey, anonKey.trim());
-    currentUrl = url.trim();
-    currentAnonKey = anonKey.trim();
-
-    if (currentUrl.isNotEmpty && currentAnonKey.isNotEmpty) {
-      try {
-        await Supabase.initialize(
-          url: currentUrl,
-          anonKey: currentAnonKey,
-        );
-        isInitialized = true;
-        return true;
-      } catch (e) {
-        debugPrint('Failed to connect to Supabase: $e');
-        isInitialized = false;
-        return false;
-      }
+    var cleanUrl = url.trim();
+    while (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
     }
-    return false;
+    final cleanAnonKey = anonKey.trim();
+
+    final parsed = Uri.tryParse(cleanUrl);
+    if (parsed == null ||
+        !(parsed.scheme == 'http' || parsed.scheme == 'https') ||
+        parsed.host.isEmpty ||
+        cleanAnonKey.isEmpty) {
+      return false;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUrl, cleanUrl);
+    await prefs.setString(_keyAnonKey, cleanAnonKey);
+    currentUrl = cleanUrl;
+    currentAnonKey = cleanAnonKey;
+
+    try {
+      if (isInitialized) {
+        try {
+          await Supabase.instance.dispose();
+        } catch (_) {}
+        isInitialized = false;
+      }
+      await Supabase.initialize(
+        url: currentUrl,
+        publishableKey: currentAnonKey,
+        debug: kDebugMode,
+      );
+      isInitialized = true;
+      return true;
+    } catch (e) {
+      debugPrint('Failed to connect to Supabase: $e');
+      isInitialized = false;
+      return false;
+    }
   }
 
   static SupabaseClient? get client {

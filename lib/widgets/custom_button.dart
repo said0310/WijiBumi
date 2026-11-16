@@ -29,15 +29,17 @@ class CustomButton extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final fgColor = isOutlined
+        ? (textColor ?? theme.primaryColor)
+        : (textColor ?? (isDark ? Colors.black : Colors.white));
+
     final child = isLoading
         ? SizedBox(
             height: 22,
             width: 22,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isOutlined ? (textColor ?? theme.primaryColor) : Colors.white,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(fgColor),
             ),
           )
         : Row(
@@ -48,43 +50,56 @@ class CustomButton extends StatelessWidget {
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
               ],
-              Text(
-                text,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isOutlined
-                      ? (textColor ?? theme.primaryColor)
-                      : (textColor ?? (isDark ? Colors.black : Colors.white)),
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: fgColor,
+                  ),
                 ),
               ),
             ],
           );
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: isOutlined
-          ? OutlinedButton(
-              onPressed: isLoading ? null : onPressed,
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: backgroundColor ?? theme.primaryColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: width ?? 0,
+        maxWidth: width ?? double.infinity,
+        minHeight: height,
+      ),
+      child: SizedBox(
+        width: width,
+        child: isOutlined
+            ? OutlinedButton(
+                onPressed: isLoading ? null : onPressed,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: Size(0, height),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  side: BorderSide(color: backgroundColor ?? theme.primaryColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              child: child,
-            )
-          : ElevatedButton(
-              onPressed: isLoading ? null : onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: backgroundColor ?? theme.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                child: child,
+              )
+            : ElevatedButton(
+                onPressed: isLoading ? null : onPressed,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(0, height),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  backgroundColor: backgroundColor ?? theme.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: child,
               ),
-              child: child,
-            ),
+      ),
     );
   }
 }

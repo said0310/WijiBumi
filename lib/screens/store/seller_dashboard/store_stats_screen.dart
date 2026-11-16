@@ -3,50 +3,66 @@ import 'package:provider/provider.dart';
 import '../../../providers/store_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../widgets/glass_widgets.dart';
+import '../../../widgets/smart_image.dart';
 
 class StoreStatsScreen extends StatelessWidget {
   const StoreStatsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final storeProvider = context.watch<StoreProvider>();
     final products = storeProvider.myStoreProducts;
 
-    // Daily/Weekly simulated metrics
-    final totalSales = storeProvider.totalRevenue;
-    final weeklySales = totalSales * 0.7;
+    final weeklySales = storeProvider.weeklyRevenue;
+    final prevWeekSales = storeProvider.previousWeekRevenue;
     final completedOrders = storeProvider.completedOrdersCount;
+    final unitsSold = storeProvider.totalUnitsSold;
+    final dailySales = storeProvider.last7DaysSales;
 
-    // Top selling products sorted by totalSales
-    final topProducts = List.from(products);
-    topProducts.sort((a, b) => b.totalSales.compareTo(a.totalSales));
+    final maxAmount = dailySales.fold<double>(
+      0,
+      (maxVal, p) => p.amount > maxVal ? p.amount : maxVal,
+    );
+
+    String growthText;
+    if (prevWeekSales > 0) {
+      final pct = ((weeklySales - prevWeekSales) / prevWeekSales * 100).round();
+      growthText = '${pct >= 0 ? '+' : ''}$pct% vs minggu lalu';
+    } else if (weeklySales > 0) {
+      growthText = 'Aktif minggu ini';
+    } else {
+      growthText = 'Belum ada transaksi minggu ini';
+    }
+
+    final topProducts = List.of(products)
+      ..sort((a, b) => b.totalSales.compareTo(a.totalSales));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Statistik Penjualan'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
           // Weekly Summary Cards
           Row(
             children: [
               Expanded(
-                child: Container(
+                child: GlassContainer(
+                  borderRadius: 14,
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Penjualan Minggu Ini', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      const Text('Penjualan 7 Hari',
+                          style: TextStyle(fontSize: 11, color: Colors.grey)),
                       const SizedBox(height: 6),
                       Text(
                         CurrencyFormatter.format(weeklySales),
@@ -57,11 +73,30 @@ class StoreStatsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.trending_up, size: 14, color: AppColors.success),
-                          SizedBox(width: 4),
-                          Text('+18% vs minggu lalu', style: TextStyle(fontSize: 10, color: AppColors.success)),
+                          Icon(
+                            weeklySales >= prevWeekSales
+                                ? Icons.trending_up
+                                : Icons.trending_down,
+                            size: 14,
+                            color: weeklySales >= prevWeekSales
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              growthText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: weeklySales >= prevWeekSales
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -70,26 +105,24 @@ class StoreStatsScreen extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
+                child: GlassContainer(
+                  borderRadius: 14,
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Pesanan Selesai', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      const Text('Produk Terjual & Selesai',
+                          style: TextStyle(fontSize: 11, color: Colors.grey)),
                       const SizedBox(height: 6),
                       Text(
-                        '$completedOrders Pesanan',
+                        '$unitsSold Item',
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
-                      const Text('Tingkat kepuasan 99%', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      Text(
+                        '$completedOrders Pesanan Selesai',
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
@@ -99,16 +132,10 @@ class StoreStatsScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Weekly Bar Chart Visual
-          Container(
+          // Dynamic 7-Day Bar Chart from actual store orders
+          GlassContainer(
+            borderRadius: 16,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -116,20 +143,64 @@ class StoreStatsScreen extends StatelessWidget {
                   'Perkembangan Penjualan 7 Hari Terakhir',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _buildBar(day: 'Sen', height: 45, isDark: isDark),
-                    _buildBar(day: 'Sel', height: 70, isDark: isDark),
-                    _buildBar(day: 'Rab', height: 55, isDark: isDark),
-                    _buildBar(day: 'Kam', height: 85, isDark: isDark),
-                    _buildBar(day: 'Jum', height: 110, isDark: isDark),
-                    _buildBar(day: 'Sab', height: 130, isDark: isDark, isHighlight: true),
-                    _buildBar(day: 'Min', height: 95, isDark: isDark),
-                  ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Dihitung dari data transaksi toko secara aktual',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
+                const SizedBox(height: 18),
+                if (maxAmount == 0)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Center(
+                      child: Text(
+                        'Belum ada penjualan terbayar dalam 7 hari terakhir.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: dailySales.map((point) {
+                      final ratio = maxAmount > 0 ? (point.amount / maxAmount) : 0.0;
+                      final barHeight = (ratio * 120).clamp(6.0, 120.0);
+                      final isMax = point.amount == maxAmount && point.amount > 0;
+                      return Expanded(
+                        child: Column(
+                          children: [
+                            if (point.amount > 0)
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${(point.amount / 1000).round()}k',
+                                  style: const TextStyle(fontSize: 9, color: Colors.grey),
+                                ),
+                              ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: 24,
+                              height: barHeight,
+                              decoration: BoxDecoration(
+                                color: isMax
+                                    ? AppColors.secondary
+                                    : (isDark ? AppColors.primaryLight : AppColors.primary),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              point.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),
@@ -138,7 +209,7 @@ class StoreStatsScreen extends StatelessWidget {
 
           // Top Selling Products Section
           const Text(
-            'Produk Paling Laris (Best Sellers)',
+            'Produk Terlaris',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -146,89 +217,63 @@ class StoreStatsScreen extends StatelessWidget {
           if (topProducts.isEmpty)
             const Text('Belum ada data penjualan produk.', style: TextStyle(color: Colors.grey))
           else
-            ...topProducts.take(5).map((p) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 45,
-                        height: 45,
-                        child: Image.network(
-                          p.primaryImage,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.eco),
+            ...topProducts.take(5).map((p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: GlassContainer(
+                    borderRadius: 12,
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 45,
+                            height: 45,
+                            child: SmartImage(source: p.primaryImage, fit: BoxFit.cover),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1),
-                          const SizedBox(height: 2),
-                          Text('${CurrencyFormatter.format(p.price)} / ${p.unit}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(p.name,
+                                  style:
+                                      const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text('${CurrencyFormatter.format(p.price)} / ${p.unit}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${p.totalSales} Terjual',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: isDark ? AppColors.primaryLight : AppColors.primary,
+                              ),
+                            ),
+                              Text(
+                                'Sisa: ${p.stock}',
+                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${p.totalSales} Terjual',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: isDark ? AppColors.primaryLight : AppColors.primary,
-                          ),
-                        ),
-                        Text(
-                          'Sisa: ${p.stock}',
-                          style: const TextStyle(fontSize: 10, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBar({
-    required String day,
-    required double height,
-    required bool isDark,
-    bool isHighlight = false,
-  }) {
-    return Column(
-      children: [
-        Container(
-          width: 24,
-          height: height,
-          decoration: BoxDecoration(
-            color: isHighlight
-                ? AppColors.secondary
-                : (isDark ? AppColors.primaryLight : AppColors.primary),
-            borderRadius: BorderRadius.circular(6),
+                  )),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(day, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
+      ),
     );
   }
 }

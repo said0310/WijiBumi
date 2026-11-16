@@ -1,5 +1,6 @@
-class Store {
-  final String id;
+import 'base_entity.dart';
+
+class Store extends BaseEntity {
   final String ownerId;
   final String storeName;
   final String slug;
@@ -15,16 +16,16 @@ class Store {
   final String? postalCode;
   final double? latitude;
   final double? longitude;
+  final String? operatingHours;
   final String verificationStatus; // pending, approved, rejected, suspended
   final String? verificationNote;
   final bool isActive;
   final double rating;
   final int totalReviews;
-  final DateTime createdAt;
   final DateTime updatedAt;
 
   Store({
-    required this.id,
+    required super.id,
     required this.ownerId,
     required this.storeName,
     required this.slug,
@@ -40,16 +41,37 @@ class Store {
     this.postalCode,
     this.latitude,
     this.longitude,
+    this.operatingHours,
     this.verificationStatus = 'pending',
     this.verificationNote,
     this.isActive = false,
     this.rating = 5.0,
     this.totalReviews = 0,
-    required this.createdAt,
+    required super.createdAt,
     required this.updatedAt,
   });
 
   bool get isApproved => verificationStatus == 'approved' && isActive;
+
+    @override
+  String get displayTitle => storeName;
+
+  @override
+  String get displaySubtitle => city ?? 'Lokasi belum diisi';
+  
+  String get verificationStatusLabel {
+    switch (verificationStatus) {
+      case 'approved':
+        return isActive ? 'Aktif & Terverifikasi' : 'Nonaktif';
+      case 'rejected':
+        return 'Ditolak';
+      case 'suspended':
+        return 'Ditangguhkan';
+      case 'pending':
+      default:
+        return 'Menunggu Verifikasi';
+    }
+  }
 
   factory Store.fromJson(Map<String, dynamic> json) {
     return Store(
@@ -69,6 +91,7 @@ class Store {
       postalCode: json['postal_code'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      operatingHours: json['operating_hours'] as String?,
       verificationStatus: json['verification_status'] as String? ?? 'pending',
       verificationNote: json['verification_note'] as String?,
       isActive: json['is_active'] as bool? ?? false,
@@ -83,9 +106,8 @@ class Store {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+  Map<String, dynamic> toJson({bool includeId = true, bool includeVerification = true}) {
+    final map = <String, dynamic>{
       'owner_id': ownerId,
       'store_name': storeName,
       'slug': slug,
@@ -101,12 +123,17 @@ class Store {
       'postal_code': postalCode,
       'latitude': latitude,
       'longitude': longitude,
-      'verification_status': verificationStatus,
-      'verification_note': verificationNote,
-      'is_active': isActive,
+      'operating_hours': operatingHours,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (includeId) map['id'] = id;
+    if (includeVerification) {
+      map['verification_status'] = verificationStatus;
+      map['verification_note'] = verificationNote;
+      map['is_active'] = isActive;
+    }
+    return map;
   }
 
   Store copyWith({
@@ -123,8 +150,12 @@ class Store {
     String? postalCode,
     double? latitude,
     double? longitude,
+    String? operatingHours,
     String? verificationStatus,
+    String? verificationNote,
     bool? isActive,
+    double? rating,
+    int? totalReviews,
   }) {
     return Store(
       id: id,
@@ -143,11 +174,12 @@ class Store {
       postalCode: postalCode ?? this.postalCode,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      operatingHours: operatingHours ?? this.operatingHours,
       verificationStatus: verificationStatus ?? this.verificationStatus,
-      verificationNote: verificationNote,
+      verificationNote: verificationNote ?? this.verificationNote,
       isActive: isActive ?? this.isActive,
-      rating: rating,
-      totalReviews: totalReviews,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

@@ -9,36 +9,36 @@ class OrderStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = AppColors.info.withOpacity(0.12);
+    Color bg = AppColors.info.withValues(alpha: 0.12);
     Color fg = AppColors.info;
 
     switch (status) {
       case AppConstants.statusPendingPayment:
-        bg = AppColors.warning.withOpacity(0.15);
+        bg = AppColors.warning.withValues(alpha: 0.15);
         fg = AppColors.warning;
         break;
       case AppConstants.statusAwaitingConfirmation:
-        bg = Colors.purple.withOpacity(0.15);
+        bg = Colors.purple.withValues(alpha: 0.15);
         fg = Colors.purple;
         break;
       case AppConstants.statusProcessing:
-        bg = Colors.blue.withOpacity(0.15);
+        bg = Colors.blue.withValues(alpha: 0.15);
         fg = Colors.blue;
         break;
       case AppConstants.statusReadyToShip:
-        bg = Colors.teal.withOpacity(0.15);
+        bg = Colors.teal.withValues(alpha: 0.15);
         fg = Colors.teal;
         break;
       case AppConstants.statusShipped:
-        bg = AppColors.secondary.withOpacity(0.15);
+        bg = AppColors.secondary.withValues(alpha: 0.15);
         fg = AppColors.secondary;
         break;
       case AppConstants.statusCompleted:
-        bg = AppColors.success.withOpacity(0.15);
+        bg = AppColors.success.withValues(alpha: 0.15);
         fg = AppColors.success;
         break;
       case AppConstants.statusCancelled:
-        bg = AppColors.error.withOpacity(0.15);
+        bg = AppColors.error.withValues(alpha: 0.15);
         fg = AppColors.error;
         break;
     }
@@ -51,6 +51,8 @@ class OrderStatusBadge extends StatelessWidget {
       ),
       child: Text(
         AppConstants.getStatusLabel(status),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: fg,
           fontSize: 11,

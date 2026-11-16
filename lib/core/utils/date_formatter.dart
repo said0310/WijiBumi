@@ -15,6 +15,22 @@ class DateFormatter {
     return '$day $month $year';
   }
 
+  /// Formats date as `DD MMMM YYYY` (e.g. `05 Mei 2000`).
+  static String formatBirthDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = _fullMonths[date.month];
+    final year = date.year;
+    return '$day $month $year';
+  }
+
+  /// Formats date as ISO `YYYY-MM-DD` for PostgreSQL `date` columns.
+  static String formatSqlDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   static String formatFull(DateTime date) {
     final day = date.day;
     final month = _fullMonths[date.month];

@@ -50,9 +50,8 @@ class Promotion {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+  Map<String, dynamic> toJson({bool includeId = true}) {
+    final map = <String, dynamic>{
       'store_id': storeId,
       'title': title,
       'code': code,
@@ -67,5 +66,9 @@ class Promotion {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (includeId) {
+      map['id'] = id;
+    }
+    return map;
   }
 }

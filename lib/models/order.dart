@@ -185,7 +185,7 @@ class Order {
     return Order(
       id: json['id'] as String,
       orderCode: json['order_code'] as String,
-      buyerId: json['buyer_id'] as String,
+      buyerId: json['buyer_id'] as String? ?? '',
       storeId: json['store_id'] as String,
       addressId: json['address_id'] as String?,
       shippingAddressSnapshot: json['shipping_address_snapshot'] is Map
@@ -260,6 +260,37 @@ class Order {
       items: items ?? this.items,
       shipment: shipment ?? this.shipment,
       payment: payment ?? this.payment,
+    );
+  }
+}
+
+class OrderStatusHistoryEntry {
+  final String id;
+  final String orderId;
+  final String status;
+  final String actorRole;
+  final String? note;
+  final DateTime createdAt;
+
+  const OrderStatusHistoryEntry({
+    required this.id,
+    required this.orderId,
+    required this.status,
+    required this.actorRole,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory OrderStatusHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return OrderStatusHistoryEntry(
+      id: json['id'] as String,
+      orderId: json['order_id'] as String,
+      status: json['status'] as String? ?? '',
+      actorRole: json['actor_role'] as String? ?? 'system',
+      note: json['note'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 }
