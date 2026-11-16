@@ -1804,13 +1804,33 @@ class SupabaseService {
 
     if (isConnected) {
       final client = SupabaseConfig.client!;
-      final res = await client.rpc('create_checkout_orders', params: {
-        'p_address_id': address.id,
-        'p_payment_method': paymentMethod,
-        'p_courier_name': courierName,
-        'p_buyer_note': buyerNote,
-      });
-      return _hydrateCreatedOrders(res as List);
+      try {
+        final res = await client.rpc('create_checkout_orders', params: {
+          'p_address_id': address.id,
+          'p_payment_method': paymentMethod,
+          'p_courier_name': courierName,
+          'p_buyer_note': buyerNote,
+        });
+        return await _hydrateCreatedOrders(res as List);
+      } on PostgrestException catch (e) {
+        if (e.message.toLowerCase().contains('payments_status_check') ||
+            e.code == '23514') {
+          try {
+            final fallbackRes = await client.rpc('create_checkout_orders', params: {
+              'p_address_id': address.id,
+              'p_payment_method': 'COD (Bayar di Tempat)',
+              'p_courier_name': courierName,
+              'p_buyer_note': buyerNote != null && buyerNote.isNotEmpty
+                  ? '[$paymentMethod] $buyerNote'
+                  : '[$paymentMethod]',
+            });
+            return await _hydrateCreatedOrders(fallbackRes as List);
+          } catch (_) {
+            rethrow;
+          }
+        }
+        rethrow;
+      }
     }
 
     final userCart = cartItems.where((c) => c.userId == uid).toList();
@@ -1866,6 +1886,24 @@ class SupabaseService {
         });
         return await _hydrateCreatedOrders(res as List);
       } on PostgrestException catch (e) {
+        if (e.message.toLowerCase().contains('payments_status_check') ||
+            e.code == '23514') {
+          try {
+            final fallbackRes = await client.rpc('create_direct_order', params: {
+              'p_address_id': address.id,
+              'p_product_id': product.id,
+              'p_quantity': quantity,
+              'p_payment_method': 'COD (Bayar di Tempat)',
+              'p_courier_name': courierName,
+              'p_buyer_note': buyerNote != null && buyerNote.isNotEmpty
+                  ? '[$paymentMethod] $buyerNote'
+                  : '[$paymentMethod]',
+            });
+            return await _hydrateCreatedOrders(fallbackRes as List);
+          } catch (_) {
+            rethrow;
+          }
+        }
         if (e.code == 'PGRST202' ||
             e.message.toLowerCase().contains('create_direct_order')) {
           throw Exception(
