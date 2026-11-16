@@ -14,7 +14,6 @@ import '../../providers/store_provider.dart';
 import '../../widgets/wijibumi_auth_widgets.dart';
 import '../main_navigation_screen.dart';
 import '../store/register_store_screen.dart';
-import '../store/seller_auth/seller_login_screen.dart';
 import '../store/seller_dashboard/seller_main_navigation_screen.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
@@ -162,28 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _openSellerPortal() {
-    final authProvider = context.read<AuthProvider>();
-    final storeProvider = context.read<StoreProvider>();
-    final prefill = _identifierController.text.trim();
-    final Widget target;
-    if (authProvider.isAuthenticated &&
-        authProvider.hasSellerAccess &&
-        authProvider.isSellerSessionAuthenticated) {
-      target = storeProvider.hasStore
-          ? const SellerMainNavigationScreen()
-          : const RegisterStoreScreen();
-    } else {
-      target = SellerLoginScreen(
-        initialEmail: prefill.contains('@') ? prefill : null,
-      );
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => target),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -203,9 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: constraints.maxWidth,
                 height: constraints.maxHeight,
               );
-
-              final iconColor =
-                  isDark ? AppColors.primaryLight : AppColors.forestGreen;
 
               return SingleChildScrollView(
                 child: Stack(
@@ -419,34 +393,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                    Positioned(
-                      top: 8,
-                      right: 12,
-                      child: IconButton(
-                        key: const Key('login_storefront_button'),
-                        onPressed: _openSellerPortal,
-                        tooltip: 'Toko Saya',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                        icon: Image.asset(
-                          'assets/images/storefront_icon.png',
-                          width: 26,
-                          height: 26,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          color: iconColor,
-                          colorBlendMode: BlendMode.srcIn,
-                          errorBuilder: (_, _, _) => Icon(
-                            Icons.storefront_outlined,
-                            size: 26,
-                            color: iconColor,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               );

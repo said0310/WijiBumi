@@ -775,15 +775,7 @@ void main() {
     await tester.pumpWidget(_buildTestApp(home: const LoginScreen()));
     await tester.pumpAndSettle();
 
-    // Test top-right Storefront icon -> SellerLoginScreen -> back to LoginScreen
-    final storefrontFinder = find.byKey(const Key('login_storefront_button'));
-    expect(storefrontFinder, findsOneWidget);
-    await tester.tap(storefrontFinder);
-    await tester.pumpAndSettle();
-    expect(find.byType(SellerLoginScreen), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    await tester.pumpAndSettle();
-    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byKey(const Key('login_storefront_button')), findsNothing);
 
     // Test Lupa Kata Sandi navigation & reset
     await tester.tap(find.text('Lupa Kata Sandi?'));
@@ -913,12 +905,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(LoginScreen), findsOneWidget, reason: 'Failed on $size');
 
-      final storefrontBtn = find.byKey(const Key('login_storefront_button'));
-      expect(storefrontBtn, findsOneWidget, reason: 'Missing storefront on $size');
-      final storefrontRect = tester.getRect(storefrontBtn);
-      expect(storefrontRect.right, lessThanOrEqualTo(size.width));
-      expect(storefrontRect.left, greaterThan(size.width * 0.5));
-      expect(storefrontRect.top, lessThan(80));
+      expect(
+        find.byKey(const Key('login_storefront_button')),
+        findsNothing,
+        reason: 'Storefront should not be shown on LoginScreen at $size',
+      );
 
       // 2. RegisterScreen
       await tester.pumpWidget(_buildTestApp(home: const RegisterScreen()));
