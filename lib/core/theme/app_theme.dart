@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static final String? _fontFamily = GoogleFonts.plusJakartaSans().fontFamily;
+  static final String? _fontFamily = GoogleFonts.dmSans().fontFamily;
 
   static ThemeData get lightTheme {
     return ThemeData(

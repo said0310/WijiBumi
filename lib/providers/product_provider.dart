@@ -9,6 +9,7 @@ class ProductProvider with ChangeNotifier {
   String? _selectedCategoryId;
   String _searchQuery = '';
   bool _isLoading = false;
+  int _fetchSeq = 0;
 
   List<Product> get products => _products;
   List<Category> get categories => _categories;
@@ -37,11 +38,23 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> fetchProducts() async {
-    _products = await SupabaseService.instance.getProducts(
-      categoryId: _selectedCategoryId,
-      searchQuery: _searchQuery,
-    );
-    notifyListeners();
+    final seq = ++_fetchSeq;
+    try {
+      final fetched = await SupabaseService.instance.getProducts(
+        categoryId: _selectedCategoryId,
+        searchQuery: _searchQuery,
+      );
+      if (seq != _fetchSeq) return;
+      _products = fetched;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching products: $e');
+    }
+  }
+
+  void setCategory(String? categoryId) {
+    _selectedCategoryId = categoryId;
+    fetchProducts();
   }
 
   void selectCategory(String? categoryId) {
@@ -59,6 +72,12 @@ class ProductProvider with ChangeNotifier {
   }
 
   void clearSearch() {
+    _searchQuery = '';
+    fetchProducts();
+  }
+
+  void resetFilters() {
+    _selectedCategoryId = null;
     _searchQuery = '';
     fetchProducts();
   }
