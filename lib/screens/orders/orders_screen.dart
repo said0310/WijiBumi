@@ -21,7 +21,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final List<Map<String, String>> _statusTabs = [
+  static const _statusTabs = [
     {'label': 'Semua', 'status': ''},
     {'label': 'Menunggu Pembayaran', 'status': AppConstants.statusPendingPayment},
     {'label': 'Menunggu Konfirmasi', 'status': AppConstants.statusAwaitingConfirmation},
@@ -44,11 +44,21 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
+  void _openDetail(Order order) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)));
+  }
+
+  void _openTracking(Order order) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ShipmentTrackingScreen(order: order)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final orderProvider = context.watch<OrderProvider>();
+    final primaryColor = isDark ? AppColors.primaryLight : AppColors.primary;
+    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMutedLight;
 
     return Scaffold(
       appBar: AppBar(
@@ -56,19 +66,17 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: isDark ? AppColors.primaryLight : AppColors.primary,
-          labelColor: isDark ? AppColors.primaryLight : AppColors.primary,
-          unselectedLabelColor: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-          tabs: _statusTabs.map((t) => Tab(text: t['label'])).toList(),
-          onTap: (index) {
-            orderProvider.setStatusFilter(_statusTabs[index]['status']!);
-          },
+          indicatorColor: primaryColor,
+          labelColor: primaryColor,
+          unselectedLabelColor: textMuted,
+          tabs: [for (final t in _statusTabs) Tab(text: t['label'])],
+          onTap: (i) => orderProvider.setStatusFilter(_statusTabs[i]['status']!),
         ),
       ),
       body: RefreshIndicator(
         onRefresh: () => orderProvider.loadOrders(),
         child: orderProvider.orders.isEmpty
-            ? EmptyState(
+            ? const EmptyState(
                 icon: Icons.receipt_long_outlined,
                 title: 'Tidak Ada Pesanan',
                 message: 'Belum ada transaksi dengan status yang dipilih.',
@@ -76,33 +84,27 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
             : ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: orderProvider.orders.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final order = orderProvider.orders[index];
-                  return _buildOrderCard(context, order, isDark, theme);
-                },
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
+                itemBuilder: (_, index) => _orderCard(orderProvider.orders[index], isDark, theme),
               ),
       ),
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, Order order, bool isDark, ThemeData theme) {
+  Widget _orderCard(Order order, bool isDark, ThemeData theme) {
+    final firstItem = order.items.isNotEmpty ? order.items.first : null;
+    final primaryColor = isDark ? AppColors.primaryLight : AppColors.primary;
+    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMutedLight;
+
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)),
-        );
-      },
+      onTap: () => _openDetail(order),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          ),
+          border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
@@ -122,27 +124,18 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                   children: [
                     const Icon(Icons.storefront, size: 16, color: AppColors.primary),
                     const SizedBox(width: 6),
-                    Text(
-                      order.storeName ?? 'Toko Mitra',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
+                    Text(order.storeName ?? 'Toko Mitra', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 OrderStatusBadge(status: order.status),
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              '${order.orderCode} • ${DateFormatter.formatShort(order.createdAt)}',
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-              ),
-            ),
+            Text('${order.orderCode} • ${DateFormatter.formatShort(order.createdAt)}', style: TextStyle(fontSize: 11, color: textMuted)),
             const Divider(height: 18),
 
             // First item snapshot
-            if (order.items.isNotEmpty) ...[
+            if (firstItem != null) ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -152,8 +145,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                       width: 50,
                       height: 50,
                       child: Image.network(
-                        order.items.first.imageSnapshot ??
-                            'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
+                        firstItem.imageSnapshot ?? 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(Icons.eco),
                       ),
@@ -164,19 +156,11 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          order.items.first.productNameSnapshot,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
+                        Text(firstItem.productNameSnapshot, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          '${order.items.first.quantity} x ${CurrencyFormatter.format(order.items.first.unitPrice)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                          ),
+                          '${firstItem.quantity} x ${CurrencyFormatter.format(firstItem.unitPrice)}',
+                          style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                         ),
                       ],
                     ),
@@ -185,14 +169,7 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               ),
               if (order.items.length > 1) ...[
                 const SizedBox(height: 6),
-                Text(
-                  '+ ${order.items.length - 1} produk lainnya',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+                Text('+ ${order.items.length - 1} produk lainnya', style: TextStyle(fontSize: 11, color: textMuted, fontStyle: FontStyle.italic)),
               ],
             ],
 
@@ -206,49 +183,22 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Total Belanja', style: TextStyle(fontSize: 11, color: AppColors.textMutedLight)),
-                    Text(
-                      CurrencyFormatter.format(order.totalAmount),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? AppColors.primaryLight : AppColors.primary,
-                      ),
-                    ),
+                    Text(CurrencyFormatter.format(order.totalAmount), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: primaryColor)),
                   ],
                 ),
                 Row(
                   children: [
                     if (order.shipment != null) ...[
                       OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ShipmentTrackingScreen(order: order),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          minimumSize: Size.zero,
-                        ),
+                        onPressed: () => _openTracking(order),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), minimumSize: Size.zero),
                         child: const Text('Lacak', style: TextStyle(fontSize: 12)),
                       ),
                       const SizedBox(width: 8),
                     ],
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => OrderDetailScreen(order: order),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        minimumSize: Size.zero,
-                      ),
+                      onPressed: () => _openDetail(order),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6), minimumSize: Size.zero),
                       child: const Text('Detail', style: TextStyle(fontSize: 12)),
                     ),
                   ],

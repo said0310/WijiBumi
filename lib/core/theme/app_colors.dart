@@ -40,4 +40,7 @@ class AppColors {
   static const Color gradeA = Color(0xFF059669);
   static const Color gradeB = Color(0xFFD97706);
   static const Color gradeC = Color(0xFFDC2626);
+
+  static Color forGrade(String? grade) =>
+      grade == 'B' ? gradeB : (grade == 'C' ? gradeC : gradeA);
 }

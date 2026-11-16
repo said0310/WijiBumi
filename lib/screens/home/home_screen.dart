@@ -1,23 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/product.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/empty_state.dart';
-import '../cart/cart_screen.dart';
+import '../../widgets/cart_icon_button.dart';
 import '../chat/chat_list_screen.dart';
 import 'product_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  void _openProduct(BuildContext context, Product product) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
+  }
+
+  void _addToCart(BuildContext context, Product product) {
+    context.read<CartProvider>().addToCart(product);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product.name} dimasukkan ke keranjang'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final productProvider = context.watch<ProductProvider>();
-    final cartCount = context.watch<CartProvider>().itemCount;
 
     return Scaffold(
       appBar: AppBar(
@@ -57,54 +70,12 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          // Chat Icon
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Pesan',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ChatListScreen()),
-              );
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatListScreen())),
           ),
-          // Cart Icon with Badge
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined),
-                tooltip: 'Keranjang',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  );
-                },
-              ),
-              if (cartCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.error,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      '$cartCount',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          const CartIconButton(),
           const SizedBox(width: 8),
         ],
       ),
@@ -143,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // Promo Banners (Only show when not actively searching)
+              // Promo Banners
               if (productProvider.searchQuery.isEmpty) ...[
                 SizedBox(
                   height: 160,
@@ -182,10 +153,7 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Kategori Produk',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
+                    const Text('Kategori Produk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -198,19 +166,16 @@ class HomeScreen extends StatelessWidget {
                             onTap: () => productProvider.selectCategory(null),
                             isDark: isDark,
                           ),
-                          ...productProvider.categories.map((cat) {
-                            IconData iconData = Icons.eco;
-                            if (cat.slug == 'bunga') iconData = Icons.local_florist;
-                            if (cat.slug == 'buah-buahan') iconData = Icons.apple;
-
-                            return _buildCategoryChip(
+                          for (final cat in productProvider.categories)
+                            _buildCategoryChip(
                               label: cat.name,
-                              icon: iconData,
+                              icon: cat.slug == 'bunga'
+                                  ? Icons.local_florist
+                                  : (cat.slug == 'buah-buahan' ? Icons.apple : Icons.eco),
                               isSelected: productProvider.selectedCategoryId == cat.id,
                               onTap: () => productProvider.selectCategory(cat.id),
                               isDark: isDark,
-                            );
-                          }).toList(),
+                            ),
                         ],
                       ),
                     ),
@@ -220,17 +185,14 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Rekomendasi Produk Section (Only when not searching)
+              // Rekomendasi Section
               if (productProvider.searchQuery.isEmpty && productProvider.selectedCategoryId == null) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Rekomendasi Petani',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
+                      const Text('Rekomendasi Petani', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       Text(
                         'Pilihan Terbaik',
                         style: TextStyle(
@@ -249,30 +211,15 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     scrollDirection: Axis.horizontal,
                     itemCount: productProvider.recommendedProducts.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
                       final product = productProvider.recommendedProducts[index];
                       return SizedBox(
                         width: 170,
                         child: ProductCard(
                           product: product,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProductDetailScreen(product: product),
-                              ),
-                            );
-                          },
-                          onAddToCart: () {
-                            context.read<CartProvider>().addToCart(product);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${product.name} dimasukkan ke keranjang'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
+                          onTap: () => _openProduct(context, product),
+                          onAddToCart: () => _addToCart(context, product),
                         ),
                       );
                     },
@@ -321,23 +268,8 @@ class HomeScreen extends StatelessWidget {
                       final product = productProvider.products[index];
                       return ProductCard(
                         product: product,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProductDetailScreen(product: product),
-                            ),
-                          );
-                        },
-                        onAddToCart: () {
-                          context.read<CartProvider>().addToCart(product);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${product.name} dimasukkan ke keranjang'),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
+                        onTap: () => _openProduct(context, product),
+                        onAddToCart: () => _addToCart(context, product),
                       );
                     },
                   ),
@@ -380,30 +312,19 @@ class HomeScreen extends StatelessWidget {
             ),
             child: Text(
               code,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
             maxLines: 2,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
           ),
         ],
       ),
@@ -417,6 +338,7 @@ class HomeScreen extends StatelessWidget {
     required VoidCallback onTap,
     required bool isDark,
   }) {
+    final activeColor = isDark ? AppColors.primaryLight : AppColors.primary;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
@@ -425,14 +347,10 @@ class HomeScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                : (isDark ? AppColors.surfaceDark : Colors.white),
+            color: isSelected ? activeColor : (isDark ? AppColors.surfaceDark : Colors.white),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected
-                  ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                  : (isDark ? AppColors.borderDark : AppColors.borderLight),
+              color: isSelected ? activeColor : (isDark ? AppColors.borderDark : AppColors.borderLight),
             ),
           ),
           child: Row(
@@ -440,9 +358,7 @@ class HomeScreen extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected
-                    ? (isDark ? Colors.black : Colors.white)
-                    : (isDark ? AppColors.primaryLight : AppColors.primary),
+                color: isSelected ? (isDark ? Colors.black : Colors.white) : activeColor,
               ),
               const SizedBox(width: 6),
               Text(

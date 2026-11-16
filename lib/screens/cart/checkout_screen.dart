@@ -23,7 +23,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isPlacingOrder = false;
 
   String _selectedPayment = 'BCA Virtual Account';
-  final List<String> _paymentMethods = [
+  static const _paymentMethods = [
     'BCA Virtual Account',
     'Mandiri Virtual Account',
     'BRI Virtual Account',
@@ -34,13 +34,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   ];
 
   String _selectedCourier = 'J&T Express Cargo Tani';
-  final List<String> _couriers = [
+  static const _couriers = [
     'J&T Express Cargo Tani',
     'SiCepat Cargo Fresh',
     'AnterAja Sameday',
   ];
 
-  final TextEditingController _noteController = TextEditingController();
+  final _noteController = TextEditingController();
 
   @override
   void initState() {
@@ -65,22 +65,89 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
+  Future<void> _handleCheckout() async {
+    if (_selectedAddress == null || _isPlacingOrder) return;
+    setState(() => _isPlacingOrder = true);
+
+    final note = _noteController.text.trim();
+    final orders = await context.read<OrderProvider>().checkout(
+          address: _selectedAddress!,
+          paymentMethod: _selectedPayment,
+          courierName: _selectedCourier,
+          buyerNote: note.isNotEmpty ? note : null,
+        );
+
+    setState(() => _isPlacingOrder = false);
+
+    if (mounted && orders.isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: AppColors.success),
+              SizedBox(width: 8),
+              Text('Pesanan Dibuat!'),
+            ],
+          ),
+          content: Text(
+            'Berhasil membuat ${orders.length} pesanan toko. Silakan selesaikan pembayaran dan pantau status pengiriman.',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
+              },
+              child: const Text('Lihat Pesanan Saya'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showAddressPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text('Pilih Alamat Pengiriman', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          for (final a in _addresses)
+            ListTile(
+              title: Text('${a.label}: ${a.recipientName}'),
+              subtitle: Text(a.fullAddressText),
+              trailing: _selectedAddress?.id == a.id ? const Icon(Icons.check, color: AppColors.primary) : null,
+              onTap: () {
+                setState(() => _selectedAddress = a);
+                Navigator.pop(ctx);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final cartProvider = context.watch<CartProvider>();
-
-    final storeGroups = cartProvider.itemsByStore;
+    final cart = context.watch<CartProvider>();
+    final storeGroups = cart.itemsByStore;
     final int storeCount = storeGroups.length;
     const double shippingFeePerStore = 15000.0;
     final double totalShippingFee = shippingFeePerStore * storeCount;
-    final double grandTotal = cartProvider.totalAmount + totalShippingFee;
+    final double grandTotal = cart.totalAmount + totalShippingFee;
+    final primaryColor = isDark ? AppColors.primaryLight : AppColors.primary;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Checkout Pembelian'),
-      ),
+      appBar: AppBar(title: const Text('Checkout Pembelian')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -94,9 +161,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: BoxDecoration(
                       color: theme.cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,41 +173,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               children: [
                                 Icon(Icons.location_on, color: AppColors.secondary, size: 20),
                                 SizedBox(width: 8),
-                                Text(
-                                  'Alamat Pengiriman',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                                ),
+                                Text('Alamat Pengiriman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                               ],
                             ),
                             if (_addresses.length > 1)
                               TextButton(
-                                onPressed: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    builder: (ctx) => ListView(
-                                      shrinkWrap: true,
-                                      padding: const EdgeInsets.all(16),
-                                      children: [
-                                        const Text(
-                                          'Pilih Alamat Pengiriman',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        ..._addresses.map((a) => ListTile(
-                                              title: Text('${a.label}: ${a.recipientName}'),
-                                              subtitle: Text(a.fullAddressText),
-                                              trailing: _selectedAddress?.id == a.id
-                                                  ? const Icon(Icons.check, color: AppColors.primary)
-                                                  : null,
-                                              onTap: () {
-                                                setState(() => _selectedAddress = a);
-                                                Navigator.pop(ctx);
-                                              },
-                                            )),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                onPressed: _showAddressPicker,
                                 child: const Text('Ganti', style: TextStyle(fontSize: 12)),
                               ),
                           ],
@@ -156,52 +192,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           const SizedBox(height: 4),
                           Text(
                             _selectedAddress!.fullAddressText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                            ),
+                            style: TextStyle(fontSize: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                           ),
-                        ] else ...[
-                          const Text(
-                            'Belum ada alamat pengiriman terpilih.',
-                            style: TextStyle(fontSize: 12, color: AppColors.error),
-                          ),
-                        ],
+                        ] else
+                          const Text('Belum ada alamat pengiriman terpilih.', style: TextStyle(fontSize: 12, color: AppColors.error)),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 16),
 
                   // Orders Breakdown by Store
-                  const Text(
-                    'Daftar Pesanan per Toko',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
+                  const Text('Daftar Pesanan per Toko', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Text(
                     'Pesanan akan diproses secara terpisah oleh masing-masing toko mitra.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                    ),
+                    style: TextStyle(fontSize: 12, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                   ),
                   const SizedBox(height: 10),
 
-                  ...storeGroups.entries.map((entry) {
-                    final storeName = entry.key;
-                    final items = entry.value;
-                    final subtotalThisStore = items.fold(0.0, (sum, i) => sum + i.totalPrice);
-
-                    return Container(
+                  for (final entry in storeGroups.entries)
+                    Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                        ),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,15 +226,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             children: [
                               const Icon(Icons.storefront, size: 16, color: AppColors.primary),
                               const SizedBox(width: 6),
-                              Text(
-                                storeName,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
+                              Text(entry.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                             ],
                           ),
                           const Divider(height: 16),
-                          ...items.map((ci) {
-                            return Padding(
+                          for (final ci in entry.value)
+                            Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               child: Row(
                                 children: [
@@ -236,17 +249,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   ),
                                 ],
                               ),
-                            );
-                          }),
+                            ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text('Ongkir Khusus Segar:', style: TextStyle(fontSize: 12)),
-                              Text(
-                                CurrencyFormatter.format(shippingFeePerStore),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
+                              Text(CurrencyFormatter.format(shippingFeePerStore), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -255,19 +264,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             children: [
                               const Text('Subtotal Toko:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               Text(
-                                CurrencyFormatter.format(subtotalThisStore + shippingFeePerStore),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.primaryLight : AppColors.primary,
-                                ),
+                                CurrencyFormatter.format(entry.value.fold(0.0, (s, i) => s + i.totalPrice) + shippingFeePerStore),
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: primaryColor),
                               ),
                             ],
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
+                    ),
 
                   const SizedBox(height: 12),
 
@@ -277,30 +281,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: BoxDecoration(
                       color: theme.cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Pilih Layanan Kurir Pengiriman',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                        ),
+                        const Text('Pilih Layanan Kurir Pengiriman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 10),
-                        ..._couriers.map((c) {
-                          return RadioListTile<String>(
+                        for (final c in _couriers)
+                          RadioListTile<String>(
                             value: c,
                             groupValue: _selectedCourier,
                             contentPadding: EdgeInsets.zero,
                             title: Text(c, style: const TextStyle(fontSize: 13)),
                             subtitle: const Text('Spesialis produk segar berpendingin', style: TextStyle(fontSize: 11)),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _selectedCourier = val);
-                            },
-                          );
-                        }).toList(),
+                            onChanged: (val) => val != null ? setState(() => _selectedCourier = val) : null,
+                          ),
                       ],
                     ),
                   ),
@@ -313,29 +309,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: BoxDecoration(
                       color: theme.cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Metode Pembayaran',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                        ),
+                        const Text('Metode Pembayaran', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 10),
-                        ..._paymentMethods.map((pm) {
-                          return RadioListTile<String>(
+                        for (final pm in _paymentMethods)
+                          RadioListTile<String>(
                             value: pm,
                             groupValue: _selectedPayment,
                             contentPadding: EdgeInsets.zero,
                             title: Text(pm, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _selectedPayment = val);
-                            },
-                          );
-                        }).toList(),
+                            onChanged: (val) => val != null ? setState(() => _selectedPayment = val) : null,
+                          ),
                       ],
                     ),
                   ),
@@ -361,27 +349,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.surfaceDark : Colors.grey[50],
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Total Harga Produk:', style: TextStyle(fontSize: 13)),
-                            Text(CurrencyFormatter.format(cartProvider.totalAmount), style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
+                        _summaryRow('Total Harga Produk:', CurrencyFormatter.format(cart.totalAmount)),
                         const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Ongkos Kirim ($storeCount Toko):', style: const TextStyle(fontSize: 13)),
-                            Text(CurrencyFormatter.format(totalShippingFee), style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
+                        _summaryRow('Ongkos Kirim ($storeCount Toko):', CurrencyFormatter.format(totalShippingFee)),
                         const Divider(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -389,11 +363,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             const Text('Total Tagihan:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                             Text(
                               CurrencyFormatter.format(grandTotal),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? AppColors.primaryLight : AppColors.primary,
-                              ),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: primaryColor),
                             ),
                           ],
                         ),
@@ -407,65 +377,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
-          border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            ),
-          ),
+          border: Border(top: BorderSide(color: borderColor)),
         ),
         child: CustomButton(
           text: 'Buat Pesanan (${CurrencyFormatter.format(grandTotal)})',
           isLoading: _isPlacingOrder,
           width: double.infinity,
-          onPressed: _selectedAddress == null || _isPlacingOrder
-              ? null
-              : () async {
-                  setState(() => _isPlacingOrder = true);
-                  final orders = await context.read<OrderProvider>().checkout(
-                        address: _selectedAddress!,
-                        paymentMethod: _selectedPayment,
-                        courierName: _selectedCourier,
-                        buyerNote: _noteController.text.trim().isNotEmpty
-                            ? _noteController.text.trim()
-                            : null,
-                      );
-                  setState(() => _isPlacingOrder = false);
-
-                  if (context.mounted && orders.isNotEmpty) {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => AlertDialog(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.check_circle, color: AppColors.success),
-                            SizedBox(width: 8),
-                            Text('Pesanan Dibuat!'),
-                          ],
-                        ),
-                        content: Text(
-                          'Berhasil membuat ${orders.length} pesanan toko. Silakan selesaikan pembayaran dan pantau status pengiriman.',
-                        ),
-                        actions: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(ctx); // Close dialog
-                              Navigator.pop(context); // Close checkout
-                              // Navigate to Orders
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const OrdersScreen()),
-                              );
-                            },
-                            child: const Text('Lihat Pesanan Saya'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
+          onPressed: _selectedAddress == null || _isPlacingOrder ? null : _handleCheckout,
         ),
       ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13)),
+        Text(value, style: const TextStyle(fontSize: 13)),
+      ],
     );
   }
 }
