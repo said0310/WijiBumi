@@ -82,7 +82,7 @@ BEGIN
     v_payment_status := 'pending';
   ELSE
     v_initial_status := 'pending_payment';
-    v_payment_status := 'unpaid';
+    v_payment_status := 'pending';
   END IF;
 
   FOR v_store_rec IN
@@ -167,7 +167,7 @@ BEGIN
     END LOOP;
 
     INSERT INTO public.payments (order_id, payment_method, amount, status)
-    VALUES (v_order_id, p_payment_method, v_total, v_payment_status);
+    VALUES (v_order_id, p_payment_method, v_total, 'pending');
 
     v_shipment_id := gen_random_uuid();
     INSERT INTO public.shipments (id, order_id, courier_name, service_name, status, estimated_arrival)
@@ -304,7 +304,7 @@ BEGIN
     v_payment_status := 'pending';
   ELSE
     v_initial_status := 'pending_payment';
-    v_payment_status := 'unpaid';
+    v_payment_status := 'pending';
   END IF;
 
   v_subtotal := v_product.price * p_quantity;
