@@ -5,6 +5,8 @@ import '../models/wishlist_item.dart';
 
 class WishlistService {
   static const String boxName = 'wishlist';
+  static final ValueNotifier<int> _fallbackNotifier = ValueNotifier<int>(0);
+
   static Box<WishlistItem> get _box => Hive.box<WishlistItem>(boxName);
 
   static Future<void> init() async {
@@ -13,17 +15,22 @@ class WishlistService {
     await Hive.openBox<WishlistItem>(boxName);
   }
 
-  static ValueListenable<Box<WishlistItem>> get listenable => _box.listenable();
-  static int get count => _box.length;
-  static WishlistItem? getAt(int index) => _box.getAt(index); // READ
+  static ValueListenable<dynamic> get listenable =>
+      Hive.isBoxOpen(boxName) ? _box.listenable() : _fallbackNotifier;
 
-  static int _indexOf(String productId) =>
-      _box.values.toList().indexWhere((e) => e.id == productId);
+  static int get count => Hive.isBoxOpen(boxName) ? _box.length : 0;
+  static WishlistItem? getAt(int index) =>
+      Hive.isBoxOpen(boxName) ? _box.getAt(index) : null;
+
+  static int _indexOf(String productId) {
+    if (!Hive.isBoxOpen(boxName)) return -1;
+    return _box.values.toList().indexWhere((e) => e.id == productId);
+  }
 
   static bool isSaved(String productId) => _indexOf(productId) != -1;
 
-  // CREATE (add) atau DELETE (deleteAt), mengembalikan pesan untuk SnackBar
   static Future<String> toggle(Product product) async {
+    if (!Hive.isBoxOpen(boxName)) return 'Wishlist belum dibuka';
     final index = _indexOf(product.id);
     if (index == -1) {
       final item = WishlistItem.fromProduct(product);
@@ -35,14 +42,16 @@ class WishlistService {
     return '${removed.displayTitle} dihapus dari wishlist';
   }
 
-  // UPDATE (putAt)
   static Future<void> updateNote(int index, String note) async {
+    if (!Hive.isBoxOpen(boxName)) return;
     final item = _box.getAt(index);
     if (item == null) return;
-    item.note = note; // lewat setter
+    item.note = note;
     await _box.putAt(index, item);
   }
 
-  // DELETE
-  static Future<void> removeAt(int index) => _box.deleteAt(index);
+  static Future<void> removeAt(int index) async {
+    if (!Hive.isBoxOpen(boxName)) return;
+    await _box.deleteAt(index);
+  }
 }

@@ -27,6 +27,7 @@ import '../store/store_detail_screen.dart';
 import '../store/store_list_screen.dart';
 import 'product_detail_screen.dart';
 import '../../widgets/weather_card.dart';
+import '../../services/sqlite_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onSeeAllStoresTap;
@@ -40,6 +41,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
+  List<String> _searchHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSearchHistory();
+  }
+
+  Future<void> _loadSearchHistory() async {
+    final history = await SqliteService.instance.getSearchHistory(limit: 5);
+    if (mounted) {
+      setState(() => _searchHistory = history);
+    }
+  }
 
   @override
   void dispose() {
@@ -60,6 +75,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchDebounce = Timer(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       productProvider.setSearchQuery(trimmed);
+      SqliteService.instance.addSearchHistory(trimmed);
+      _loadSearchHistory();
     });
   }
 
@@ -670,6 +687,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
+              if (_searchHistory.isNotEmpty && _searchController.text.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ..._searchHistory.map(
+                          (q) => Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ActionChip(
+                              avatar: const Icon(Icons.history, size: 14),
+                              label: Text(q, style: const TextStyle(fontSize: 12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              onPressed: () {
+                                _searchController.text = q;
+                                _onSearchChanged(q, productProvider);
+                              },
+                            ),
+                          ),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.clear, size: 14),
+                          label: const Text('Hapus', style: TextStyle(fontSize: 12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          onPressed: () async {
+                            await SqliteService.instance.clearSearchHistory();
+                            _loadSearchHistory();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               // 3. Asset-Based Banner Slideshow
               if (showFarmersAndBanner) ...[

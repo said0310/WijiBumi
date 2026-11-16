@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
+import '../services/sqlite_service.dart';
 import '../services/supabase_service.dart';
 
 class CartProvider with ChangeNotifier {
   List<CartItem> _items = [];
   bool _isLoading = false;
   String? _lastError;
+  bool _hasInitialSynced = false;
 
   List<CartItem> get items => _items;
   List<CartItem> get validItems =>
@@ -63,7 +65,37 @@ class CartProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _items = await SupabaseService.instance.getCart();
+      final remoteItems = await SupabaseService.instance.getCart();
+      if (remoteItems.isNotEmpty) {
+        _items = remoteItems;
+        _hasInitialSynced = true;
+        for (final item in remoteItems) {
+          await SqliteService.instance.saveCartItem(item.id, item.productId, item.quantity);
+        }
+      } else if (!_hasInitialSynced) {
+        final localData = await SqliteService.instance.getCartItems();
+        if (localData.isNotEmpty) {
+          final allProducts = await SupabaseService.instance.getProducts();
+          _items = localData.map((row) {
+            final pid = row['product_id'] as String;
+            final prod = allProducts.where((p) => p.id == pid).firstOrNull;
+            return CartItem(
+              id: row['id'] as String,
+              userId: SupabaseService.instance.activeUserId ?? 'user-1',
+              productId: pid,
+              quantity: row['quantity'] as int,
+              createdAt: DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now(),
+              updatedAt: DateTime.now(),
+              product: prod,
+            );
+          }).where((ci) => ci.product != null).toList();
+        } else {
+          _items = [];
+        }
+        _hasInitialSynced = true;
+      } else {
+        _items = [];
+      }
     } catch (e) {
       debugPrint('Error loading cart: $e');
     } finally {
@@ -101,6 +133,10 @@ class CartProvider with ChangeNotifier {
     }
     final ok = await SupabaseService.instance.addToCart(product, quantity);
     if (ok) {
+      final existingIdx = _items.indexWhere((i) => i.productId == product.id);
+      final newQty = (existingIdx != -1 ? _items[existingIdx].quantity : 0) + quantity;
+      final itemId = existingIdx != -1 ? _items[existingIdx].id : 'cart-${DateTime.now().millisecondsSinceEpoch}';
+      await SqliteService.instance.saveCartItem(itemId, product.id, newQty);
       await loadCart();
     } else {
       _lastError = 'Gagal menambahkan produk ke keranjang. Periksa koneksi Anda.';
@@ -113,7 +149,7 @@ class CartProvider with ChangeNotifier {
     if (newQty <= 0) {
       return await removeItem(cartItemId);
     }
-    final target = _items.where((i) => i.id == cartItemId).firstOrNull;
+    final target = _items.where((i) => i.id == cartItemId || i.productId == cartItemId).firstOrNull;
     if (target == null || target.product == null || !target.product!.isAvailable) {
       _lastError = 'Produk ini sudah tidak tersedia di keranjang.';
       return false;
@@ -123,50 +159,43 @@ class CartProvider with ChangeNotifier {
           'Maksimal stok ${target.product!.name} (${target.product!.stock} ${target.product!.unit}).';
       return false;
     }
-    final ok = await SupabaseService.instance.updateCartQuantity(cartItemId, newQty);
-    if (ok) {
-      await loadCart();
-    } else {
-      _lastError = 'Gagal mengubah jumlah produk. Periksa stok atau koneksi.';
-    }
-    return ok;
+
+    target.quantity = newQty;
+    await SqliteService.instance.updateCartQuantity(cartItemId, newQty);
+    notifyListeners();
+
+    await SupabaseService.instance.updateCartQuantity(target.id, newQty);
+    return true;
   }
 
   Future<bool> removeItem(String cartItemId) async {
     _lastError = null;
-    final ok = await SupabaseService.instance.removeFromCart(cartItemId);
-    if (ok) {
-      await loadCart();
-    } else {
-      _lastError = 'Gagal menghapus produk dari keranjang.';
-    }
-    return ok;
+    _items.removeWhere((i) => i.id == cartItemId || i.productId == cartItemId);
+    await SqliteService.instance.removeCartItem(cartItemId);
+    notifyListeners();
+
+    await SupabaseService.instance.removeFromCart(cartItemId);
+    return true;
   }
 
   Future<bool> removeUnavailableItems() async {
     _lastError = null;
-    final toRemove = unavailableItems;
+    final toRemove = List<CartItem>.from(unavailableItems);
     if (toRemove.isEmpty) return true;
-    bool allOk = true;
     for (final item in toRemove) {
-      final ok = await SupabaseService.instance.removeFromCart(item.id);
-      if (!ok) allOk = false;
+      await removeItem(item.id);
     }
-    await loadCart();
-    if (!allOk) {
-      _lastError = 'Sebagian item tidak tersedia gagal dihapus.';
-    }
-    return allOk;
+    return true;
   }
 
   Future<bool> clear() async {
     _lastError = null;
+    _items.clear();
+    await SqliteService.instance.clearCart();
+    notifyListeners();
     final ok = await SupabaseService.instance.clearCart();
-    if (ok) {
-      _items.clear();
-      notifyListeners();
-    } else {
-      _lastError = 'Gagal mengosongkan keranjang. Periksa koneksi Anda.';
+    if (!ok) {
+      _lastError = 'Gagal mengosongkan keranjang di server.';
     }
     return ok;
   }

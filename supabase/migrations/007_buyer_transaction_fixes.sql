@@ -350,7 +350,7 @@ BEGIN
   WHERE id = v_product.id;
 
   INSERT INTO public.payments (order_id, payment_method, amount, status)
-  VALUES (v_order_id, p_payment_method, v_total, v_payment_status);
+  VALUES (v_order_id, p_payment_method, v_total, 'pending');
 
   v_shipment_id := gen_random_uuid();
   INSERT INTO public.shipments (id, order_id, courier_name, service_name, status, estimated_arrival)
