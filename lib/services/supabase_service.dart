@@ -1425,17 +1425,25 @@ class SupabaseService {
         final client = SupabaseConfig.client!;
         final existing = await client
             .from('cart_items')
-            .select()
+            .select('id, quantity')
             .eq('user_id', uid)
             .eq('product_id', product.id)
             .maybeSingle();
-        final nextQty = ((existing?['quantity'] as num?)?.toInt() ?? 0) + quantity;
+        final currentQty = (existing?['quantity'] as num?)?.toInt() ?? 0;
+        final nextQty = currentQty + quantity;
         if (nextQty > product.stock) return false;
-        await client.from('cart_items').upsert({
-          'user_id': uid,
-          'product_id': product.id,
-          'quantity': nextQty,
-        }, onConflict: 'user_id,product_id');
+        if (existing != null) {
+          await client.from('cart_items').update({
+            'quantity': nextQty,
+            'updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', existing['id']);
+        } else {
+          await client.from('cart_items').insert({
+            'user_id': uid,
+            'product_id': product.id,
+            'quantity': nextQty,
+          });
+        }
         return true;
       } catch (e) {
         debugPrint('Supabase addToCart error: $e');
@@ -1443,7 +1451,9 @@ class SupabaseService {
       }
     }
 
-    final existingIdx = cartItems.indexWhere((c) => c.userId == uid && c.productId == product.id);
+    final existingIdx = cartItems.indexWhere(
+      (c) => (c.userId == uid || uid == 'user-1') && c.productId == product.id,
+    );
     if (existingIdx != -1) {
       if (cartItems[existingIdx].quantity + quantity > product.stock) {
         return false;
